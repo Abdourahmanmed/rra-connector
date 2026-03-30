@@ -1,6 +1,7 @@
 import express from "express";
 import { healthRouter } from "../modules/health/health.routes";
 import { setupRouter } from "../modules/setup/setup.routes";
+import { settingsRouter } from "../modules/settings/settings.routes";
 import { errorHandler } from "../middlewares/error-handler";
 
 export function createApp() {
@@ -16,6 +17,7 @@ export function createApp() {
 
   app.use(healthRouter);
   app.use(setupRouter);
+  app.use(settingsRouter);
 
   app.use((_request, response) => {
     response.status(404).json({
