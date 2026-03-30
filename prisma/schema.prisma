@@ -1,3 +1,11 @@
+/// Prisma schema for the RRA Connector service.
+///
+/// IMPORTANT: This database is owned by the connector domain and is not the Sage database.
+/// Keep connector data boundaries explicit here; do not model or couple this schema to Sage-owned persistence.
+///
+/// This file intentionally starts with only datasource and generator configuration.
+/// Add domain models incrementally through future migrations.
+
 generator client {
   provider = "prisma-client-js"
 }
