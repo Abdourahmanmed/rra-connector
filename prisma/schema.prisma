@@ -2,9 +2,6 @@
 ///
 /// IMPORTANT: This database is owned by the connector domain and is not the Sage database.
 /// Keep connector data boundaries explicit here; do not model or couple this schema to Sage-owned persistence.
-///
-/// This file intentionally starts with only datasource and generator configuration.
-/// Add domain models incrementally through future migrations.
 
 generator client {
   provider = "prisma-client-js"
@@ -13,4 +10,398 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  OPERATOR
+  AUDITOR
+}
+
+enum SqlAuthType {
+  SQL_AUTH
+  WINDOWS_AUTH
+}
+
+enum InvoiceImportStatus {
+  PENDING
+  IMPORTED
+  FAILED
+  SKIPPED
+}
+
+enum FiscalStatus {
+  NOT_SUBMITTED
+  QUEUED
+  SUBMITTED
+  ACCEPTED
+  REJECTED
+  ERROR
+}
+
+enum PdfStatus {
+  NOT_REQUESTED
+  PENDING
+  GENERATED
+  FAILED
+}
+
+enum QrStatus {
+  NOT_AVAILABLE
+  PENDING
+  GENERATED
+  FAILED
+}
+
+enum SubmissionType {
+  SALE
+  CREDIT_NOTE
+  DEBIT_NOTE
+  CANCELLATION
+  RETRY
+}
+
+enum SubmissionStatus {
+  PENDING
+  SENT
+  SUCCESS
+  FAILED
+  TIMEOUT
+}
+
+enum DocumentType {
+  FISCAL_RECEIPT
+  INVOICE_PDF
+  QR_IMAGE
+  CANCELLATION_NOTE
+  OTHER
+}
+
+enum GenerationStatus {
+  PENDING
+  PROCESSING
+  GENERATED
+  FAILED
+}
+
+enum LogLevel {
+  DEBUG
+  INFO
+  WARN
+  ERROR
+}
+
+enum LogSource {
+  IMPORTER
+  FISCAL_API
+  DOCUMENT_ENGINE
+  QR_ENGINE
+  SYNC
+  SYSTEM
+}
+
+enum SyncType {
+  ITEM_CODES
+  TAX_CODES
+  BRANCHES
+  CUSTOMERS
+  SETTINGS
+}
+
+enum QueueJobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELED
+}
+
+model Setting {
+  id                   String      @id @default(cuid())
+  key                  String      @unique
+  value                String?
+  description          String?
+
+  sqlServerHost        String
+  sqlServerInstance    String?
+  sqlServerPort        Int         @default(1433)
+  sqlDatabaseName      String
+  sqlUsername          String
+  sqlPasswordEncrypted String
+  sqlAuthType          SqlAuthType @default(SQL_AUTH)
+
+  isActive             Boolean     @default(true)
+  createdAt            DateTime    @default(now())
+  updatedAt            DateTime    @updatedAt
+
+  @@index([isActive])
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  fullName     String
+  role         UserRole  @default(OPERATOR)
+  isActive     Boolean   @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([role, isActive])
+}
+
+model SageInvoice {
+  id                String              @id @default(cuid())
+  sagePiece         String
+  sageDocType       String
+  sageDocumentNo    String?
+  customerCode      String?
+  customerName      String?
+  customerTin       String?
+  currencyCode      String              @default("RWF")
+  exchangeRate      Decimal             @db.Decimal(18, 6)
+
+  invoiceDate       DateTime
+  dueDate           DateTime?
+
+  subtotalAmount    Decimal             @db.Decimal(18, 2)
+  discountAmount    Decimal             @default(0) @db.Decimal(18, 2)
+  taxAmount         Decimal             @default(0) @db.Decimal(18, 2)
+  totalAmount       Decimal             @db.Decimal(18, 2)
+
+  importStatus      InvoiceImportStatus @default(PENDING)
+  fiscalStatus      FiscalStatus        @default(NOT_SUBMITTED)
+  pdfStatus         PdfStatus           @default(NOT_REQUESTED)
+  qrStatus          QrStatus            @default(NOT_AVAILABLE)
+
+  sourceUpdatedAt   DateTime?
+  importedAt        DateTime?
+  lastAttemptAt     DateTime?
+
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  items             SageInvoiceItem[]
+  fiscalSubmissions FiscalSubmission[]
+  fiscalResult      FiscalResult?
+  documents         GeneratedDocument[]
+  publicLinks       PublicLink[]
+  syncLogs          SyncLog[]
+
+  @@unique([sagePiece, sageDocType])
+  @@index([invoiceDate])
+  @@index([importStatus])
+  @@index([fiscalStatus])
+  @@index([pdfStatus, qrStatus])
+  @@index([customerCode])
+}
+
+model SageInvoiceItem {
+  id                String      @id @default(cuid())
+  sageInvoiceId     String
+  lineNo            Int
+  itemCode          String?
+  itemName          String
+  quantity          Decimal     @db.Decimal(18, 3)
+  unitPrice         Decimal     @db.Decimal(18, 2)
+  discountAmount    Decimal     @default(0) @db.Decimal(18, 2)
+  taxRate           Decimal     @default(0) @db.Decimal(5, 2)
+  taxAmount         Decimal     @default(0) @db.Decimal(18, 2)
+  lineTotal         Decimal     @db.Decimal(18, 2)
+  unitOfMeasure     String?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  sageInvoice       SageInvoice @relation(fields: [sageInvoiceId], references: [id], onDelete: Cascade)
+
+  @@unique([sageInvoiceId, lineNo])
+  @@index([itemCode])
+}
+
+model FiscalSubmission {
+  id                String           @id @default(cuid())
+  sageInvoiceId     String
+  submissionType    SubmissionType
+  status            SubmissionStatus @default(PENDING)
+  idempotencyKey    String?          @unique
+  requestPayload    Json
+  responsePayload   Json?
+  externalRequestId String?
+  submittedAt       DateTime?
+  completedAt       DateTime?
+  retryCount        Int              @default(0)
+  errorMessage      String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  sageInvoice       SageInvoice      @relation(fields: [sageInvoiceId], references: [id], onDelete: Cascade)
+
+  @@index([sageInvoiceId, status])
+  @@index([submissionType])
+  @@index([createdAt])
+}
+
+model FiscalResult {
+  id                    String      @id @default(cuid())
+  sageInvoiceId         String      @unique
+  rcptNo                String
+  intrlData             String?
+  rcptSign              String
+  verificationUrl       String?
+  sdcId                 String?
+  mrcNo                 String?
+  qrCodeData            String?
+  fiscalDay             String?
+  taxAmount             Decimal?    @db.Decimal(18, 2)
+  totalAmount           Decimal?    @db.Decimal(18, 2)
+  resultPayload         Json?
+  receivedAt            DateTime?
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+
+  sageInvoice           SageInvoice  @relation(fields: [sageInvoiceId], references: [id], onDelete: Cascade)
+
+  @@index([rcptNo])
+  @@index([receivedAt])
+}
+
+model GeneratedDocument {
+  id                 String           @id @default(cuid())
+  sageInvoiceId      String
+  type               DocumentType
+  status             GenerationStatus @default(PENDING)
+  fileName           String
+  mimeType           String
+  storagePath        String
+  sha256             String?
+  fileSizeBytes      BigInt?
+  generatedAt        DateTime?
+  expiresAt          DateTime?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  sageInvoice        SageInvoice      @relation(fields: [sageInvoiceId], references: [id], onDelete: Cascade)
+
+  @@index([sageInvoiceId, type])
+  @@index([status])
+}
+
+model PublicLink {
+  id                 String      @id @default(cuid())
+  sageInvoiceId      String
+  token              String      @unique
+  label              String?
+  targetUrl          String
+  isRevoked          Boolean     @default(false)
+  expiresAt          DateTime?
+  lastAccessedAt     DateTime?
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+
+  sageInvoice        SageInvoice @relation(fields: [sageInvoiceId], references: [id], onDelete: Cascade)
+
+  @@index([sageInvoiceId])
+  @@index([expiresAt])
+}
+
+model SyncLog {
+  id                 String      @id @default(cuid())
+  sageInvoiceId      String?
+  syncType           SyncType?
+  level              LogLevel    @default(INFO)
+  source             LogSource
+  message            String
+  context            Json?
+  createdAt          DateTime    @default(now())
+
+  sageInvoice        SageInvoice? @relation(fields: [sageInvoiceId], references: [id], onDelete: SetNull)
+
+  @@index([sageInvoiceId])
+  @@index([syncType, createdAt])
+  @@index([level, createdAt])
+  @@index([source, createdAt])
+}
+
+model CodeSyncState {
+  id                 String      @id @default(cuid())
+  syncType           SyncType    @unique
+  cursor             String?
+  lastSyncedAt       DateTime?
+  lastSuccessAt      DateTime?
+  lastError          String?
+  isRunning          Boolean     @default(false)
+  updatedAt          DateTime    @updatedAt
+  createdAt          DateTime    @default(now())
+
+  @@index([isRunning])
+}
+
+model RraCode {
+  id                 String      @id @default(cuid())
+  code               String      @unique
+  description        String
+  category           String?
+  taxRate            Decimal?    @db.Decimal(5, 2)
+  isActive           Boolean     @default(true)
+  syncedAt           DateTime?
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+
+  mappings           ItemMapping[]
+
+  @@index([category])
+  @@index([isActive])
+}
+
+model ItemMapping {
+  id                 String      @id @default(cuid())
+  sageItemCode       String      @unique
+  sageItemName       String?
+  rraCodeId          String
+  confidenceScore    Decimal?    @db.Decimal(5, 2)
+  isActive           Boolean     @default(true)
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+
+  rraCode            RraCode     @relation(fields: [rraCodeId], references: [id], onDelete: Restrict)
+
+  @@index([rraCodeId])
+  @@index([isActive])
+}
+
+model QueueJob {
+  id                 String         @id @default(cuid())
+  queueName          String
+  jobType            String
+  status             QueueJobStatus @default(PENDING)
+  payload            Json
+  attempts           Int            @default(0)
+  maxAttempts        Int            @default(5)
+  runAt              DateTime       @default(now())
+  lockedAt           DateTime?
+  lockedBy           String?
+  completedAt        DateTime?
+  failedAt           DateTime?
+  lastError          String?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  @@index([queueName, status, runAt])
+  @@index([status, runAt])
+}
+
+model DeviceInitialization {
+  id                 String      @id @default(cuid())
+  deviceId           String      @unique
+  branchCode         String?
+  initializedAt      DateTime?
+  certificatePem     String?
+  privateKeyEncrypted String?
+  status             GenerationStatus @default(PENDING)
+  lastError          String?
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+
+  @@index([status])
 }
