@@ -1,0 +1,14 @@
+{
+  "name": "rra-connector",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:api": "npm run dev -w @rra/api",
+    "build:api": "npm run build -w @rra/api",
+    "typecheck:api": "npm run typecheck -w @rra/api"
+  }
+}
