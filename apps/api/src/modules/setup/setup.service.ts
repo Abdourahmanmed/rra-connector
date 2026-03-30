@@ -1,6 +1,6 @@
-import net from "node:net";
 import { db } from "../../config/db";
 import { encryptSecret } from "../../services/secret-crypto.service";
+import { sqlServerService } from "../../services/sqlserver";
 import type {
   CompleteSetupInput,
   ServiceResult,
@@ -26,15 +26,19 @@ export class SetupService {
 
   async testSqlConnection(input: TestSqlInput): Promise<ServiceResult> {
     try {
-      await this.testTcpConnection({
+      await sqlServerService.testConnection({
         host: input.host,
+        instance: input.instance,
         port: input.port,
-        timeoutMs: input.timeoutMs
+        database: input.database,
+        username: input.username,
+        password: input.password,
+        authType: input.authType
       });
 
       return {
         success: true,
-        message: "SQL Server is reachable."
+        message: "SQL Server connection test succeeded."
       };
     } catch (error) {
       return {
@@ -127,39 +131,5 @@ export class SetupService {
       success: true,
       message: "Setup configuration saved successfully."
     };
-  }
-
-  private async testTcpConnection(params: {
-    host: string;
-    port: number;
-    timeoutMs: number;
-  }): Promise<void> {
-    await new Promise<void>((resolve, reject) => {
-      const socket = new net.Socket();
-
-      const cleanup = () => {
-        socket.removeAllListeners();
-        socket.destroy();
-      };
-
-      socket.setTimeout(params.timeoutMs);
-
-      socket.once("connect", () => {
-        cleanup();
-        resolve();
-      });
-
-      socket.once("timeout", () => {
-        cleanup();
-        reject(new Error(`Connection timed out after ${params.timeoutMs}ms`));
-      });
-
-      socket.once("error", (error) => {
-        cleanup();
-        reject(error);
-      });
-
-      socket.connect(params.port, params.host);
-    });
   }
 }
