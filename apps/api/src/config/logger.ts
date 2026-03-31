@@ -1,4 +1,4 @@
-import { env } from "./env";
+import { Env } from "./env";
 
 type LogLevel = "debug" | "info" | "warn" | "error";
 
@@ -10,7 +10,7 @@ const levelOrder: Record<LogLevel, number> = {
 };
 
 function shouldLog(targetLevel: LogLevel): boolean {
-  return levelOrder[targetLevel] >= levelOrder[env.LOG_LEVEL];
+  return levelOrder[targetLevel] >= levelOrder[Env.LOG_LEVEL];
 }
 
 function formatMessage(level: LogLevel, message: string, meta?: unknown): string {

@@ -21,7 +21,6 @@ const ProcessEnv = {
   SECRET_ENCRYPTION_KEY: process.env.SECRET_ENCRYPTION_KEY,
 };
 const parsedEnv = envSchema.safeParse(process.env);
-console.log("process env :", ProcessEnv);
 
 if (!parsedEnv.success) {
   throw new Error(
