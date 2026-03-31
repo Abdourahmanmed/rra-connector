@@ -1,4 +1,4 @@
-import { db } from "../../config/db";
+import prisma from "../../config/prisma";
 import { encryptSecret } from "../../services/secret-crypto.service";
 import { sqlServerService } from "../../services/sqlserver";
 import type {
@@ -13,10 +13,18 @@ const SETUP_KEY = "connector_setup";
 
 export class SetupService {
   async getStatus(): Promise<SetupStatusResponse> {
-    const setting = await db.setting.findFirst({
-      where: { key: SETUP_KEY, isActive: true },
-      select: { createdAt: true }
-    });
+    let setting;
+
+    try {
+      setting = await prisma.setting.findFirst({
+        where: { key: SETUP_KEY, isActive: true },
+        select: { createdAt: true }
+      });
+    } catch (error) {
+      throw new Error(
+        `Failed to load setup status from the database: ${error instanceof Error ? error.message : "Unknown database error"}`
+      );
+    }
 
     return {
       initialized: Boolean(setting),
@@ -84,48 +92,54 @@ export class SetupService {
     const sqlPasswordEncrypted = encryptSecret(input.sql.password);
     const vsdcSecretEncrypted = encryptSecret(input.vsdc.clientSecret);
 
-    await db.setting.upsert({
-      where: { key: SETUP_KEY },
-      update: {
-        description: "Connector setup configuration",
-        sqlServerHost: input.sql.host,
-        sqlServerInstance: input.sql.instance,
-        sqlServerPort: input.sql.port,
-        sqlDatabaseName: input.sql.database,
-        sqlUsername: input.sql.username,
-        sqlPasswordEncrypted,
-        sqlAuthType: input.sql.authType,
-        value: JSON.stringify({
-          vsdc: {
-            baseUrl: input.vsdc.baseUrl,
-            deviceId: input.vsdc.deviceId,
-            clientId: input.vsdc.clientId,
-            clientSecretEncrypted: vsdcSecretEncrypted
-          }
-        }),
-        isActive: true
-      },
-      create: {
-        key: SETUP_KEY,
-        description: "Connector setup configuration",
-        sqlServerHost: input.sql.host,
-        sqlServerInstance: input.sql.instance,
-        sqlServerPort: input.sql.port,
-        sqlDatabaseName: input.sql.database,
-        sqlUsername: input.sql.username,
-        sqlPasswordEncrypted,
-        sqlAuthType: input.sql.authType,
-        value: JSON.stringify({
-          vsdc: {
-            baseUrl: input.vsdc.baseUrl,
-            deviceId: input.vsdc.deviceId,
-            clientId: input.vsdc.clientId,
-            clientSecretEncrypted: vsdcSecretEncrypted
-          }
-        }),
-        isActive: true
-      }
-    });
+    try {
+      await prisma.setting.upsert({
+        where: { key: SETUP_KEY },
+        update: {
+          description: "Connector setup configuration",
+          sqlServerHost: input.sql.host,
+          sqlServerInstance: input.sql.instance,
+          sqlServerPort: input.sql.port,
+          sqlDatabaseName: input.sql.database,
+          sqlUsername: input.sql.username,
+          sqlPasswordEncrypted,
+          sqlAuthType: input.sql.authType,
+          value: JSON.stringify({
+            vsdc: {
+              baseUrl: input.vsdc.baseUrl,
+              deviceId: input.vsdc.deviceId,
+              clientId: input.vsdc.clientId,
+              clientSecretEncrypted: vsdcSecretEncrypted
+            }
+          }),
+          isActive: true
+        },
+        create: {
+          key: SETUP_KEY,
+          description: "Connector setup configuration",
+          sqlServerHost: input.sql.host,
+          sqlServerInstance: input.sql.instance,
+          sqlServerPort: input.sql.port,
+          sqlDatabaseName: input.sql.database,
+          sqlUsername: input.sql.username,
+          sqlPasswordEncrypted,
+          sqlAuthType: input.sql.authType,
+          value: JSON.stringify({
+            vsdc: {
+              baseUrl: input.vsdc.baseUrl,
+              deviceId: input.vsdc.deviceId,
+              clientId: input.vsdc.clientId,
+              clientSecretEncrypted: vsdcSecretEncrypted
+            }
+          }),
+          isActive: true
+        }
+      });
+    } catch (error) {
+      throw new Error(
+        `Failed to save setup configuration: ${error instanceof Error ? error.message : "Unknown database error"}`
+      );
+    }
 
     return {
       success: true,

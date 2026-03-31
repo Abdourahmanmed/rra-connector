@@ -15,7 +15,7 @@ const pool =
 
 const adapter = new PrismaPg(pool);
 
-export const db =
+const prisma =
   globalForPrisma.prisma ??
   new PrismaClient({
     adapter,
@@ -24,9 +24,11 @@ export const db =
 
 if (process.env.NODE_ENV !== "production") {
   globalForPrisma.pgPool = pool;
-  globalForPrisma.prisma = db;
+  globalForPrisma.prisma = prisma;
 }
 
 export async function checkDatabaseConnection() {
-  await db.$queryRaw`SELECT 1`;
+  await prisma.$queryRaw`SELECT 1`;
 }
+
+export default prisma;

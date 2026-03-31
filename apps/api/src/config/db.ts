@@ -1,1 +1,1 @@
-export { db, checkDatabaseConnection } from "./prisma";
+export { default as db, checkDatabaseConnection } from "./prisma";
