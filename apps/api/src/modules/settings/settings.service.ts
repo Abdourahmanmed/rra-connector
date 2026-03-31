@@ -1,5 +1,5 @@
 import type { SqlAuthType } from "@prisma/client";
-import { db } from "../../config/db";
+import prisma from "../../config/prisma";
 import { encryptSecret } from "../../services/secret-crypto.service";
 import type { updateSettingsSchema } from "./settings.schema";
 import type { z } from "zod";
@@ -53,19 +53,27 @@ type SafeSettingsResponse = {
 
 export class SettingsService {
   async getSettings(): Promise<SafeSettingsResponse | null> {
-    const setting = await db.setting.findFirst({
-      where: { key: SETUP_KEY, isActive: true },
-      select: {
-        sqlServerHost: true,
-        sqlServerInstance: true,
-        sqlServerPort: true,
-        sqlDatabaseName: true,
-        sqlUsername: true,
-        sqlPasswordEncrypted: true,
-        sqlAuthType: true,
-        value: true
-      }
-    });
+    let setting;
+
+    try {
+      setting = await prisma.setting.findFirst({
+        where: { key: SETUP_KEY, isActive: true },
+        select: {
+          sqlServerHost: true,
+          sqlServerInstance: true,
+          sqlServerPort: true,
+          sqlDatabaseName: true,
+          sqlUsername: true,
+          sqlPasswordEncrypted: true,
+          sqlAuthType: true,
+          value: true
+        }
+      });
+    } catch (error) {
+      throw new Error(
+        `Failed to load settings from the database: ${error instanceof Error ? error.message : "Unknown database error"}`
+      );
+    }
 
     if (!setting) {
       return null;
@@ -96,14 +104,22 @@ export class SettingsService {
   }
 
   async updateSettings(input: UpdateSettingsInput): Promise<SafeSettingsResponse | null> {
-    const current = await db.setting.findFirst({
-      where: { key: SETUP_KEY, isActive: true },
-      select: {
-        id: true,
-        value: true,
-        sqlPasswordEncrypted: true
-      }
-    });
+    let current;
+
+    try {
+      current = await prisma.setting.findFirst({
+        where: { key: SETUP_KEY, isActive: true },
+        select: {
+          id: true,
+          value: true,
+          sqlPasswordEncrypted: true
+        }
+      });
+    } catch (error) {
+      throw new Error(
+        `Failed to load current settings from the database: ${error instanceof Error ? error.message : "Unknown database error"}`
+      );
+    }
 
     if (!current) {
       return null;
@@ -131,22 +147,28 @@ export class SettingsService {
         : {})
     };
 
-    await db.setting.update({
-      where: { id: current.id },
-      data: {
-        ...(input.sql?.host !== undefined ? { sqlServerHost: input.sql.host } : {}),
-        ...(input.sql?.instance !== undefined ? { sqlServerInstance: input.sql.instance || null } : {}),
-        ...(input.sql?.port !== undefined ? { sqlServerPort: input.sql.port } : {}),
-        ...(input.sql?.database !== undefined ? { sqlDatabaseName: input.sql.database } : {}),
-        ...(input.sql?.username !== undefined ? { sqlUsername: input.sql.username } : {}),
-        ...(input.sql?.authType !== undefined ? { sqlAuthType: input.sql.authType } : {}),
-        sqlPasswordEncrypted:
-          input.sql?.password !== undefined
-            ? encryptSecret(input.sql.password)
-            : current.sqlPasswordEncrypted,
-        value: JSON.stringify(mergedValue)
-      }
-    });
+    try {
+      await prisma.setting.update({
+        where: { id: current.id },
+        data: {
+          ...(input.sql?.host !== undefined ? { sqlServerHost: input.sql.host } : {}),
+          ...(input.sql?.instance !== undefined ? { sqlServerInstance: input.sql.instance || null } : {}),
+          ...(input.sql?.port !== undefined ? { sqlServerPort: input.sql.port } : {}),
+          ...(input.sql?.database !== undefined ? { sqlDatabaseName: input.sql.database } : {}),
+          ...(input.sql?.username !== undefined ? { sqlUsername: input.sql.username } : {}),
+          ...(input.sql?.authType !== undefined ? { sqlAuthType: input.sql.authType } : {}),
+          sqlPasswordEncrypted:
+            input.sql?.password !== undefined
+              ? encryptSecret(input.sql.password)
+              : current.sqlPasswordEncrypted,
+          value: JSON.stringify(mergedValue)
+        }
+      });
+    } catch (error) {
+      throw new Error(
+        `Failed to update settings in the database: ${error instanceof Error ? error.message : "Unknown database error"}`
+      );
+    }
 
     return this.getSettings();
   }
