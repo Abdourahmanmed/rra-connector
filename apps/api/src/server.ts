@@ -1,15 +1,15 @@
 import type { Server } from "node:http";
 import { createApp } from "./config/app";
-import { env } from "./config/env";
+import { Env } from "./config/env";
 import { logger } from "./config/logger";
 
 export function startServer(): Server {
   const app = createApp();
 
-  const server = app.listen(env.PORT, () => {
+  const server = app.listen(Env.PORT, () => {
     logger.info("API server started", {
-      nodeEnv: env.NODE_ENV,
-      port: env.PORT
+      nodeEnv: Env.NODE_ENV,
+      port: Env.PORT,
     });
   });
 
