@@ -1,5 +1,5 @@
 import sql from "mssql";
-import { db } from "../../config/db";
+import prisma from "../../config/prisma";
 import { logger } from "../../config/logger";
 import { decryptSecret } from "../secret-crypto.service";
 import type {
@@ -79,18 +79,26 @@ export class SqlServerService {
   }
 
   async getSavedSettings(): Promise<SqlServerConnectionSettings> {
-    const saved = await db.setting.findFirst({
-      where: { key: SETUP_KEY, isActive: true },
-      select: {
-        sqlServerHost: true,
-        sqlServerInstance: true,
-        sqlServerPort: true,
-        sqlDatabaseName: true,
-        sqlUsername: true,
-        sqlPasswordEncrypted: true,
-        sqlAuthType: true
-      }
-    });
+    let saved;
+
+    try {
+      saved = await prisma.setting.findFirst({
+        where: { key: SETUP_KEY, isActive: true },
+        select: {
+          sqlServerHost: true,
+          sqlServerInstance: true,
+          sqlServerPort: true,
+          sqlDatabaseName: true,
+          sqlUsername: true,
+          sqlPasswordEncrypted: true,
+          sqlAuthType: true
+        }
+      });
+    } catch (error) {
+      throw new Error(
+        `Failed to load SQL Server settings: ${error instanceof Error ? error.message : "Unknown database error"}`
+      );
+    }
 
     if (!saved) {
       throw new Error("SQL Server settings are not configured yet.");
