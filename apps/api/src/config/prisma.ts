@@ -10,7 +10,7 @@ const globalForPrisma = globalThis as unknown as {
 const pool =
   globalForPrisma.pgPool ??
   new Pool({
-    connectionString: process.env.DATABASE_URL
+    connectionString: process.env.DATABASE_URL,
   });
 
 const adapter = new PrismaPg(pool);
@@ -19,7 +19,10 @@ const prisma =
   globalForPrisma.prisma ??
   new PrismaClient({
     adapter,
-    log: process.env.NODE_ENV === "development" ? ["query", "warn", "error"] : ["warn", "error"]
+    log:
+      process.env.NODE_ENV === "development"
+        ? ["query", "warn", "error"]
+        : ["warn", "error"],
   });
 
 if (process.env.NODE_ENV !== "production") {
@@ -28,7 +31,7 @@ if (process.env.NODE_ENV !== "production") {
 }
 
 export async function checkDatabaseConnection() {
-  await prisma.$queryRaw`SELECT 1`;
+  await prisma.setting.findFirst();
 }
 
 export default prisma;
