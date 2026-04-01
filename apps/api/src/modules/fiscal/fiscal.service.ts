@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import prisma from "../../config/prisma";
 import { logger } from "../../config/logger";
 import { FiscalMapper } from "./fiscal.mapper";
-import { VsdcService } from "../../services/vsdc/vsdc.service";
+import { VsdcService } from "../../services/vsdc";
 
 const mapper = new FiscalMapper();
 const vsdcService = new VsdcService();
@@ -171,7 +171,10 @@ export class FiscalService {
       try {
         attempt += 1;
 
-        const response = await vsdcService.submitSale(payload as never, idempotencyKey);
+        const response = await vsdcService.submitSale({
+          payload: payload as never,
+          idempotencyKey
+        });
         const success = response.statusCode >= 200 && response.statusCode < 300;
 
         if (success) {

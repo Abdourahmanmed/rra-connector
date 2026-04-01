@@ -1,6 +1,7 @@
 import prisma from "../../config/prisma";
 import { encryptSecret } from "../../services/secret-crypto.service";
 import { sqlServerService } from "../../services/sqlserver";
+import { VsdcService } from "../../services/vsdc";
 import type {
   CompleteSetupInput,
   ServiceResult,
@@ -10,6 +11,7 @@ import type {
 } from "./setup.types";
 
 const SETUP_KEY = "connector_setup";
+const vsdcService = new VsdcService();
 
 export class SetupService {
   async getStatus(): Promise<SetupStatusResponse> {
@@ -58,34 +60,29 @@ export class SetupService {
   }
 
   async testVsdcConnectivity(input: TestVsdcInput): Promise<ServiceResult<{ statusCode: number }>> {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), input.timeoutMs);
+    const result = await vsdcService.testConnectivity({
+      timeoutMs: input.timeoutMs,
+      config: {
+        baseUrl: input.baseUrl,
+        deviceId: input.deviceId,
+        clientId: input.clientId,
+        clientSecret: input.clientSecret
+      }
+    });
 
-    try {
-      const response = await fetch(input.baseUrl, {
-        method: "GET",
-        signal: controller.signal,
-        headers: {
-          "x-device-id": input.deviceId,
-          "x-client-id": input.clientId,
-          "x-client-secret": input.clientSecret
-        }
-      });
-
-      return {
-        success: true,
-        message: "VSDC endpoint is reachable.",
-        data: { statusCode: response.status }
-      };
-    } catch (error) {
+    if (!result.ok) {
       return {
         success: false,
         message: "Unable to reach VSDC endpoint.",
-        details: error instanceof Error ? error.message : "Connectivity test failed"
+        details: result.error.message
       };
-    } finally {
-      clearTimeout(timeout);
     }
+
+    return {
+      success: true,
+      message: "VSDC endpoint is reachable.",
+      data: { statusCode: result.data.statusCode }
+    };
   }
 
   async completeSetup(input: CompleteSetupInput): Promise<ServiceResult> {
