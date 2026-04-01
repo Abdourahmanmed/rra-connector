@@ -15,6 +15,10 @@ const envSchema = z.object({
   SECRET_ENCRYPTION_KEY: z
     .string()
     .min(32, "SECRET_ENCRYPTION_KEY must be at least 32 characters"),
+  AUTH_JWT_SECRET: z
+    .string()
+    .min(32, "AUTH_JWT_SECRET must be at least 32 characters"),
+  AUTH_JWT_EXPIRES_IN: z.string().default("8h"),
 });
 
 const parsedEnv = envSchema.safeParse(process.env);

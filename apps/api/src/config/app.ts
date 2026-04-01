@@ -2,6 +2,7 @@ import express from "express";
 import { healthRouter } from "../modules/health/health.routes";
 import { setupRouter } from "../modules/setup/setup.routes";
 import { settingsRouter } from "../modules/settings/settings.routes";
+import { authRouter } from "../modules/auth/auth.routes";
 import { errorHandler } from "../middlewares/error-handler";
 
 export function createApp() {
@@ -17,6 +18,7 @@ export function createApp() {
 
   app.use(healthRouter);
   app.use(setupRouter);
+  app.use(authRouter);
   app.use(settingsRouter);
 
   app.use((_request, response) => {
