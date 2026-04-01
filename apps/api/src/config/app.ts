@@ -5,6 +5,7 @@ import { settingsRouter } from "../modules/settings/settings.routes";
 import { authRouter } from "../modules/auth/auth.routes";
 import { sageRouter } from "../modules/sage/sage.routes";
 import { invoicesRouter } from "../modules/invoices/invoices.routes";
+import { fiscalRouter } from "../modules/fiscal/fiscal.routes";
 import { errorHandler } from "../middlewares/error-handler";
 
 export function createApp() {
@@ -24,6 +25,7 @@ export function createApp() {
   app.use(settingsRouter);
   app.use(sageRouter);
   app.use(invoicesRouter);
+  app.use(fiscalRouter);
 
   app.use((_request, response) => {
     response.status(404).json({
