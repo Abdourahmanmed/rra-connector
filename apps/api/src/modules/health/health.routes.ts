@@ -1,5 +1,8 @@
 import { Router } from "express";
-import { checkDatabaseConnection } from "../../config/prisma";
+import {
+  checkDatabaseConnection,
+  getDatabaseDiagnostics
+} from "../../config/prisma";
 
 export const healthRouter = Router();
 
@@ -12,17 +15,27 @@ healthRouter.get("/health", (_request, response) => {
   });
 });
 
-healthRouter.get("/health/db", async (_request, response, next) => {
+healthRouter.get("/health/db", async (_request, response) => {
   try {
-    await checkDatabaseConnection();
+    const dbState = await checkDatabaseConnection();
 
     response.status(200).json({
       success: true,
       status: "ok",
       database: "connected",
+      details: dbState,
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    next(error);
+    const diagnostics = await getDatabaseDiagnostics(error);
+
+    response.status(503).json({
+      success: false,
+      status: "error",
+      database: "unavailable",
+      error: error instanceof Error ? error.message : "Database check failed",
+      diagnostics,
+      timestamp: new Date().toISOString()
+    });
   }
 });
