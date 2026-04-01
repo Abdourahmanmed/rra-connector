@@ -1,70 +1,167 @@
+import axios, { type AxiosError, type AxiosRequestConfig, type AxiosResponse } from "axios";
 import { decryptSecret } from "../secret-crypto.service";
 import { logger } from "../../config/logger";
 import prisma from "../../config/prisma";
-import type { VsdcSalePayload } from "../../modules/fiscal/fiscal.mapper";
-
-type StoredVsdcSettings = {
-  baseUrl?: string;
-  deviceId?: string;
-  clientId?: string;
-  clientSecretEncrypted?: string;
-};
-
-type StoredSettingsValue = {
-  vsdc?: StoredVsdcSettings;
-};
-
-type VsdcConfig = {
-  baseUrl: string;
-  deviceId: string;
-  clientId: string;
-  clientSecret: string;
-};
-
-export type VsdcSalesResponse = {
-  statusCode: number;
-  body: unknown;
-  externalRequestId: string | null;
-};
+import type {
+  StoredSettingsValue,
+  VsdcConfig,
+  VsdcConnectivityResult,
+  VsdcInitializationResult,
+  VsdcNormalizedError,
+  VsdcNormalizedResponse,
+  VsdcRequestConfig,
+  VsdcSalesRequest,
+  VsdcSalesResponse
+} from "./vsdc.types";
 
 const SETUP_KEY = "connector_setup";
 const DEFAULT_TIMEOUT_MS = 20_000;
 
 export class VsdcService {
-  async submitSale(payload: VsdcSalePayload, idempotencyKey: string): Promise<VsdcSalesResponse> {
-    const config = await this.loadConfig();
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
+  async testConnectivity(options: VsdcRequestConfig = {}): Promise<VsdcNormalizedResponse<VsdcConnectivityResult>> {
+    return this.executeRequest<VsdcConnectivityResult>(
+      {
+        method: "GET",
+        url: "/",
+        timeout: options.timeoutMs ?? DEFAULT_TIMEOUT_MS
+      },
+      options
+    );
+  }
+
+  async lookupInitialization(options: VsdcRequestConfig = {}): Promise<VsdcNormalizedResponse<VsdcInitializationResult>> {
+    return this.executeRequest<VsdcInitializationResult>(
+      {
+        method: "GET",
+        url: "/initialization",
+        timeout: options.timeoutMs ?? DEFAULT_TIMEOUT_MS
+      },
+      options
+    );
+  }
+
+  async submitSale(request: VsdcSalesRequest, options: VsdcRequestConfig = {}): Promise<VsdcSalesResponse> {
+    const result = await this.executeRequest<VsdcSalesResponse>(
+      {
+        method: "POST",
+        url: "/sales",
+        data: request.payload,
+        timeout: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+        headers: {
+          "x-idempotency-key": request.idempotencyKey,
+          "content-type": "application/json"
+        }
+      },
+      options
+    );
+
+    if (result.ok) {
+      return result.data;
+    }
+
+    const error = new Error(result.error.message);
+    error.name = result.error.code;
+    throw error;
+  }
+
+  private async executeRequest<T extends { statusCode: number; body: unknown; externalRequestId: string | null }>(
+    request: AxiosRequestConfig,
+    options: VsdcRequestConfig
+  ): Promise<VsdcNormalizedResponse<T>> {
+    const config = options.config ?? (await this.loadConfig());
 
     try {
-      const response = await fetch(`${config.baseUrl.replace(/\/$/, "")}/sales`, {
-        method: "POST",
-        signal: controller.signal,
+      const response = await axios.request({
+        baseURL: config.baseUrl.replace(/\/$/, ""),
+        ...request,
         headers: {
-          "content-type": "application/json",
           "x-device-id": config.deviceId,
           "x-client-id": config.clientId,
           "x-client-secret": config.clientSecret,
-          "x-idempotency-key": idempotencyKey
+          ...request.headers
         },
-        body: JSON.stringify(payload)
+        validateStatus: () => true
       });
 
-      const body = await this.parseResponseBody(response);
+      const normalizedData = this.mapResponse(response) as T;
+
+      if (response.status >= 200 && response.status < 300) {
+        return {
+          ok: true,
+          statusCode: response.status,
+          data: normalizedData,
+          externalRequestId: normalizedData.externalRequestId
+        };
+      }
 
       return {
+        ok: false,
         statusCode: response.status,
-        body,
-        externalRequestId: response.headers.get("x-request-id")
+        externalRequestId: normalizedData.externalRequestId,
+        error: {
+          code: "VSDC_HTTP_ERROR",
+          message: `VSDC responded with ${response.status}`,
+          details: normalizedData.body
+        }
       };
     } catch (error) {
-      logger.error("VSDC sale submission failed", {
-        error: error instanceof Error ? error.message : "Unknown VSDC error"
+      const normalizedError = this.normalizeError(error);
+      logger.error("VSDC request failed", {
+        error: normalizedError.error.message,
+        code: normalizedError.error.code,
+        statusCode: normalizedError.statusCode
       });
-      throw error;
-    } finally {
-      clearTimeout(timeout);
+      return normalizedError;
     }
+  }
+
+  private mapResponse(response: AxiosResponse): { statusCode: number; body: unknown; externalRequestId: string | null } {
+    return {
+      statusCode: response.status,
+      body: response.data,
+      externalRequestId: this.readExternalRequestId(response)
+    };
+  }
+
+  private readExternalRequestId(response?: AxiosResponse): string | null {
+    const requestId = response?.headers?.["x-request-id"];
+
+    if (Array.isArray(requestId)) {
+      return requestId[0] ?? null;
+    }
+
+    return typeof requestId === "string" ? requestId : null;
+  }
+
+  private normalizeError(error: unknown): VsdcNormalizedError {
+    if (axios.isAxiosError(error)) {
+      const axiosError = error as AxiosError;
+      const statusCode = axiosError.response?.status ?? 0;
+      const externalRequestId = this.readExternalRequestId(axiosError.response);
+
+      const isTimeout = axiosError.code === "ECONNABORTED";
+
+      return {
+        ok: false,
+        statusCode,
+        externalRequestId,
+        error: {
+          code: isTimeout ? "AbortError" : "VSDC_REQUEST_ERROR",
+          message: axiosError.message,
+          details: axiosError.response?.data
+        }
+      };
+    }
+
+    return {
+      ok: false,
+      statusCode: 0,
+      externalRequestId: null,
+      error: {
+        code: "VSDC_UNKNOWN_ERROR",
+        message: error instanceof Error ? error.message : "Unknown VSDC error"
+      }
+    };
   }
 
   private async loadConfig(): Promise<VsdcConfig> {
@@ -103,15 +200,5 @@ export class VsdcService {
     } catch {
       return {};
     }
-  }
-
-  private async parseResponseBody(response: Response): Promise<unknown> {
-    const contentType = response.headers.get("content-type") ?? "";
-
-    if (contentType.includes("application/json")) {
-      return response.json();
-    }
-
-    return { raw: await response.text() };
   }
 }
