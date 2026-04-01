@@ -1,5 +1,9 @@
-import "dotenv/config";
+import { resolve } from "node:path";
+import { config as loadEnv } from "dotenv";
 import { z } from "zod";
+
+export const ENV_FILE_PATH = resolve(__dirname, "../../.env");
+const envLoadResult = loadEnv({ path: ENV_FILE_PATH });
 
 const envSchema = z.object({
   NODE_ENV: z
@@ -13,13 +17,6 @@ const envSchema = z.object({
     .min(32, "SECRET_ENCRYPTION_KEY must be at least 32 characters"),
 });
 
-const ProcessEnv = {
-  PORT: process.env.PORT,
-  NODE_ENV: process.env.NODE_ENV,
-  LOG_LEVEL: process.env.LOG_LEVEL,
-  DATABASE_URL: process.env.DATABASE_URL,
-  SECRET_ENCRYPTION_KEY: process.env.SECRET_ENCRYPTION_KEY,
-};
 const parsedEnv = envSchema.safeParse(process.env);
 
 if (!parsedEnv.success) {
@@ -29,3 +26,9 @@ if (!parsedEnv.success) {
 }
 
 export const Env = parsedEnv.data;
+
+export const EnvDiagnostics = {
+  envFilePath: ENV_FILE_PATH,
+  envFileLoaded: !envLoadResult.error,
+  hasDatabaseUrl: Boolean(process.env.DATABASE_URL),
+};
