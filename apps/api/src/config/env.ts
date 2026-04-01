@@ -19,6 +19,10 @@ const envSchema = z.object({
     .string()
     .min(32, "AUTH_JWT_SECRET must be at least 32 characters"),
   AUTH_JWT_EXPIRES_IN: z.string().default("8h"),
+  DOCUMENTS_STORAGE_PATH: z.string().default(resolve(process.cwd(), "storage/documents")),
+  COMPANY_NAME: z.string().default("RRA Connector Ltd"),
+  COMPANY_TIN: z.string().default("N/A"),
+  COMPANY_ADDRESS: z.string().default("Kigali, Rwanda"),
 });
 
 const parsedEnv = envSchema.safeParse(process.env);
