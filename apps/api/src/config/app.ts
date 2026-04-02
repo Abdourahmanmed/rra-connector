@@ -10,6 +10,7 @@ import { documentsRouter } from "../modules/documents/documents.routes";
 import { qrRouter } from "../modules/qr/qr.routes";
 import { publicRouter } from "../modules/public/public.routes";
 import { dashboardRouter } from "../modules/dashboard/dashboard.routes";
+import { logsRouter } from "../modules/logs/logs.routes";
 import { errorHandler } from "../middlewares/error-handler";
 
 export function createApp() {
@@ -34,6 +35,7 @@ export function createApp() {
   app.use(qrRouter);
   app.use(publicRouter);
   app.use(dashboardRouter);
+  app.use(logsRouter);
 
   app.use((_request, response) => {
     response.status(404).json({
