@@ -8,6 +8,7 @@ import { invoicesRouter } from "../modules/invoices/invoices.routes";
 import { fiscalRouter } from "../modules/fiscal/fiscal.routes";
 import { documentsRouter } from "../modules/documents/documents.routes";
 import { qrRouter } from "../modules/qr/qr.routes";
+import { publicRouter } from "../modules/public/public.routes";
 import { errorHandler } from "../middlewares/error-handler";
 
 export function createApp() {
@@ -30,6 +31,7 @@ export function createApp() {
   app.use(fiscalRouter);
   app.use(documentsRouter);
   app.use(qrRouter);
+  app.use(publicRouter);
 
   app.use((_request, response) => {
     response.status(404).json({
