@@ -11,11 +11,11 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Form } from "@/components/ui/form"
 import { Separator } from "@/components/ui/separator"
-import { CompanyInfoStep } from "@/src/components/setup/CompanyInfoStep"
-import { SqlServerStep } from "@/src/components/setup/SqlServerStep"
-import { TestConnectionResult } from "@/src/components/setup/TestConnectionResult"
-import { VsdcStep } from "@/src/components/setup/VsdcStep"
-import { ROUTES } from "@/src/lib/constants"
+import { CompanyInfoStep } from "@/components/setup/CompanyInfoStep"
+import { SqlServerStep } from "@/components/setup/SqlServerStep"
+import { TestConnectionResult } from "@/components/setup/TestConnectionResult"
+import { VsdcStep } from "@/components/setup/VsdcStep"
+import { ROUTES } from "@/lib/constants"
 
 const setupSchema = z.object({
   sql: z.object({

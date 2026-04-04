@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import type { SetupFormValues } from "@/src/components/setup/SetupWizard"
+import type { SetupFormValues } from "@/components/setup/SetupWizard"
 
 type SqlServerStepProps = {
   form: UseFormReturn<SetupFormValues>
