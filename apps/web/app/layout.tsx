@@ -1,7 +1,7 @@
 import { Geist, Geist_Mono } from "next/font/google"
 
 import "./globals.css"
-import { AppHeader, AppShell } from "@/components/layout"
+import { AppShell } from "@/components/layout"
 import { Providers } from "@/components/providers"
 import { cn } from "@/lib/utils"
 
@@ -25,10 +25,7 @@ export default function RootLayout({
     >
       <body>
         <Providers>
-          <AppShell>
-            <AppHeader />
-            {children}
-          </AppShell>
+          <AppShell>{children}</AppShell>
         </Providers>
       </body>
     </html>
