@@ -1,4 +1,5 @@
-import type { Prisma } from "@prisma/client";
+import { readFile } from "node:fs/promises";
+import { GenerationStatus, type Prisma } from "@prisma/client";
 import prisma from "../../config/prisma";
 
 class PublicInvoiceError extends Error {
@@ -57,48 +58,18 @@ type PublicInvoicePayload = {
   documents: PublicInvoiceDocument[];
 };
 
+type PublicInvoicePdfPayload = {
+  fileName: string;
+  mimeType: string;
+  content: Buffer;
+};
+
 export class PublicService {
   async getPublicInvoiceByToken(rawToken: string): Promise<PublicInvoicePayload> {
-    const token = rawToken.trim();
-
-    if (!token) {
-      throw new PublicInvoiceError("Token is required", 400, "PUBLIC_TOKEN_REQUIRED");
-    }
-
-    if (token.length > 512) {
-      throw new PublicInvoiceError("Invalid token", 400, "PUBLIC_TOKEN_INVALID");
-    }
-
+    const token = this.validateToken(rawToken);
     const now = new Date();
 
-    const link = await prisma.publicLink.findUnique({
-      where: { token },
-      include: {
-        sageInvoice: {
-          include: {
-            items: {
-              orderBy: { lineNo: "asc" }
-            },
-            fiscalResult: true,
-            documents: {
-              orderBy: { createdAt: "desc" }
-            }
-          }
-        }
-      }
-    });
-
-    if (!link) {
-      throw new PublicInvoiceError("Public invoice not found", 404, "PUBLIC_LINK_NOT_FOUND");
-    }
-
-    if (link.isRevoked) {
-      throw new PublicInvoiceError("Public invoice is no longer available", 410, "PUBLIC_LINK_REVOKED");
-    }
-
-    if (link.expiresAt !== null && link.expiresAt <= now) {
-      throw new PublicInvoiceError("Public invoice link has expired", 410, "PUBLIC_LINK_EXPIRED");
-    }
+    const link = await this.getValidPublicLink(token, now);
 
     await prisma.publicLink.update({
       where: { id: link.id },
@@ -155,6 +126,94 @@ export class PublicService {
         expiresAt: document.expiresAt?.toISOString() ?? null
       }))
     };
+  }
+
+  async getPublicInvoicePdfByToken(params: { token: string; documentId?: string }): Promise<PublicInvoicePdfPayload> {
+    const token = this.validateToken(params.token);
+    const now = new Date();
+
+    const link = await this.getValidPublicLink(token, now);
+
+    await prisma.publicLink.update({
+      where: { id: link.id },
+      data: {
+        lastAccessedAt: now
+      }
+    });
+
+    const availableDocuments = link.sageInvoice.documents.filter(
+      (document) =>
+        document.mimeType === "application/pdf" &&
+        document.status === GenerationStatus.GENERATED &&
+        (document.expiresAt === null || document.expiresAt > now)
+    );
+
+    const document = params.documentId
+      ? availableDocuments.find((item) => item.id === params.documentId)
+      : availableDocuments[0];
+
+    if (!document) {
+      throw new PublicInvoiceError("Invoice PDF not found", 404, "PUBLIC_PDF_NOT_FOUND");
+    }
+
+    try {
+      const content = await readFile(document.storagePath);
+
+      return {
+        fileName: document.fileName,
+        mimeType: document.mimeType,
+        content
+      };
+    } catch {
+      throw new PublicInvoiceError("Invoice PDF not available", 404, "PUBLIC_PDF_NOT_AVAILABLE");
+    }
+  }
+
+  private async getValidPublicLink(token: string, now: Date) {
+    const link = await prisma.publicLink.findUnique({
+      where: { token },
+      include: {
+        sageInvoice: {
+          include: {
+            items: {
+              orderBy: { lineNo: "asc" }
+            },
+            fiscalResult: true,
+            documents: {
+              orderBy: [{ generatedAt: "desc" }, { createdAt: "desc" }]
+            }
+          }
+        }
+      }
+    });
+
+    if (!link) {
+      throw new PublicInvoiceError("Public invoice not found", 404, "PUBLIC_LINK_NOT_FOUND");
+    }
+
+    if (link.isRevoked) {
+      throw new PublicInvoiceError("Public invoice is no longer available", 410, "PUBLIC_LINK_REVOKED");
+    }
+
+    if (link.expiresAt !== null && link.expiresAt <= now) {
+      throw new PublicInvoiceError("Public invoice link has expired", 410, "PUBLIC_LINK_EXPIRED");
+    }
+
+    return link;
+  }
+
+  private validateToken(rawToken: string): string {
+    const token = rawToken.trim();
+
+    if (!token) {
+      throw new PublicInvoiceError("Token is required", 400, "PUBLIC_TOKEN_REQUIRED");
+    }
+
+    if (token.length > 512) {
+      throw new PublicInvoiceError("Invalid token", 400, "PUBLIC_TOKEN_INVALID");
+    }
+
+    return token;
   }
 
   private toNumber(value: Prisma.Decimal | number): number {
