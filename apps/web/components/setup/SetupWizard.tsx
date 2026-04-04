@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation"
 import { useMemo, useState } from "react"
 import { useForm } from "react-hook-form"
 import { toast } from "sonner"
-import { z } from "zod"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -16,42 +15,7 @@ import { SqlServerStep } from "@/components/setup/SqlServerStep"
 import { TestConnectionResult } from "@/components/setup/TestConnectionResult"
 import { VsdcStep } from "@/components/setup/VsdcStep"
 import { ROUTES } from "@/lib/constants"
-
-const setupSchema = z.object({
-  sql: z.object({
-    host: z.string().min(1, "SQL host is required"),
-    instance: z.string().optional(),
-    port: z.coerce.number().int().min(1).max(65535),
-    database: z.string().min(1, "Database is required"),
-    username: z.string().min(1, "Username is required"),
-    password: z.string().min(1, "Password is required"),
-    authType: z.enum(["SQL_AUTH", "WINDOWS_AUTH"]),
-  }),
-  vsdc: z.object({
-    tin: z.string().min(1, "TIN is required"),
-    branchId: z.string().min(1, "Branch ID is required"),
-    deviceSerialNumber: z.string().min(1, "Device serial number is required"),
-    vsdcBaseUrl: z.string().url("Provide a valid VSDC URL"),
-  }),
-  company: z.object({
-    companyName: z.string().min(1, "Company name is required"),
-    sellerName: z.string().min(1, "Seller name is required"),
-    sellerAddress: z.string().min(1, "Seller address is required"),
-    sellerPhone: z.string().min(1, "Seller phone is required"),
-    sellerEmail: z.string().email("Provide a valid seller email"),
-    publicBaseUrl: z.string().url("Provide a valid public URL"),
-    adminPassword: z.string().min(8, "Admin password must be at least 8 characters"),
-  }),
-})
-
-export type SetupFormValues = z.infer<typeof setupSchema>
-
-type ApiResult = {
-  success: boolean
-  message?: string
-  error?: string
-  details?: unknown
-}
+import { mapSettingsPayload, mapVsdcPayload, setupDefaultValues, setupSchema, type ApiResult, type SetupFormValues } from "@/lib/setup"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? ""
 
@@ -105,32 +69,7 @@ export function SetupWizard() {
 
   const form = useForm<SetupFormValues>({
     resolver: zodResolver(setupSchema),
-    defaultValues: {
-      sql: {
-        host: "",
-        instance: "",
-        port: 1433,
-        database: "",
-        username: "",
-        password: "",
-        authType: "SQL_AUTH",
-      },
-      vsdc: {
-        tin: "",
-        branchId: "",
-        deviceSerialNumber: "",
-        vsdcBaseUrl: "",
-      },
-      company: {
-        companyName: "",
-        sellerName: "",
-        sellerAddress: "",
-        sellerPhone: "",
-        sellerEmail: "",
-        publicBaseUrl: "",
-        adminPassword: "",
-      },
-    },
+    defaultValues: setupDefaultValues,
   })
 
   const steps = useMemo(
@@ -182,10 +121,7 @@ export function SetupWizard() {
 
     try {
       const result = await postJson<ApiResult>("/api/setup/test-vsdc", {
-        baseUrl: vsdc.vsdcBaseUrl,
-        deviceId: vsdc.deviceSerialNumber,
-        clientId: vsdc.tin,
-        clientSecret: vsdc.branchId,
+        ...mapVsdcPayload(vsdc),
         timeoutMs: 5000,
       })
 
@@ -220,31 +156,10 @@ export function SetupWizard() {
     try {
       await postJson<ApiResult>("/api/setup/complete", {
         sql: values.sql,
-        vsdc: {
-          baseUrl: values.vsdc.vsdcBaseUrl,
-          deviceId: values.vsdc.deviceSerialNumber,
-          clientId: values.vsdc.tin,
-          clientSecret: values.vsdc.branchId,
-        },
+        vsdc: mapVsdcPayload(values.vsdc),
       })
 
-      await patchJson("/api/settings", {
-        company: {
-          name: values.company.companyName,
-          tin: values.vsdc.tin,
-          address: values.company.sellerAddress,
-          phone: values.company.sellerPhone,
-          email: values.company.sellerEmail,
-        },
-        publicUrl: values.company.publicBaseUrl,
-        seller: {
-          name: values.company.sellerName,
-          tin: values.vsdc.tin,
-          address: values.company.sellerAddress,
-          phone: values.company.sellerPhone,
-          email: values.company.sellerEmail,
-        },
-      })
+      await patchJson("/api/settings", mapSettingsPayload(values))
 
       toast.success("Setup completed successfully")
       toast.info("Admin password capture is complete; backend provisioning endpoint is pending.")
