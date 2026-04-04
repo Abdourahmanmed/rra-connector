@@ -10,7 +10,7 @@ import {
   FormMessage,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-import type { SetupFormValues } from "@/src/components/setup/SetupWizard"
+import type { SetupFormValues } from "@/components/setup/SetupWizard"
 
 type VsdcStepProps = {
   form: UseFormReturn<SetupFormValues>

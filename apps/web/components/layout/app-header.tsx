@@ -1,4 +1,4 @@
-import { APP_NAME } from "@/src/lib/constants"
+import { APP_NAME } from "@/lib/constants"
 
 export function AppHeader() {
   return (
