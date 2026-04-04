@@ -1,8 +1,9 @@
 import { Geist, Geist_Mono } from "next/font/google"
 
 import "./globals.css"
-import { AppHeader, AppShell } from "@/src/components/layout"
 import { ThemeProvider } from "@/components/theme-provider"
+import { Toaster } from "@/components/ui/sonner"
+import { AppHeader, AppShell } from "@/src/components/layout"
 import { cn } from "@/src/lib/utils"
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-sans" })
@@ -29,6 +30,7 @@ export default function RootLayout({
             <AppHeader />
             {children}
           </AppShell>
+          <Toaster />
         </ThemeProvider>
       </body>
     </html>
