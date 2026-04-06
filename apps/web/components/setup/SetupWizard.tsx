@@ -7,7 +7,14 @@ import { useForm } from "react-hook-form"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
 import { Form } from "@/components/ui/form"
 import { Separator } from "@/components/ui/separator"
 import { CompanyInfoStep } from "@/components/setup/CompanyInfoStep"
@@ -15,11 +22,22 @@ import { SqlServerStep } from "@/components/setup/SqlServerStep"
 import { TestConnectionResult } from "@/components/setup/TestConnectionResult"
 import { VsdcStep } from "@/components/setup/VsdcStep"
 import { ROUTES } from "@/lib/constants"
-import { mapSettingsPayload, mapVsdcPayload, setupDefaultValues, setupSchema, type ApiResult, type SetupFormValues } from "@/lib/setup"
+import {
+  mapSettingsPayload,
+  mapVsdcPayload,
+  setupDefaultValues,
+  setupSchema,
+  type ApiResult,
+  type SetupFormValues,
+} from "@/lib/setup"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? ""
+console.log(process.env.NEXT_PUBLIC_API_BASE_URL)
 
-async function postJson<T extends ApiResult>(path: string, payload: unknown): Promise<T> {
+async function postJson<T extends ApiResult>(
+  path: string,
+  payload: unknown
+): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -29,7 +47,8 @@ async function postJson<T extends ApiResult>(path: string, payload: unknown): Pr
   const body = (await response.json().catch(() => null)) as T | null
 
   if (!response.ok) {
-    const message = body?.error ?? body?.message ?? `Request failed (${response.status})`
+    const message =
+      body?.error ?? body?.message ?? `Request failed (${response.status})`
     throw new Error(message)
   }
 
@@ -49,7 +68,9 @@ async function patchJson(path: string, payload: unknown): Promise<void> {
 
   if (!response.ok) {
     const body = (await response.json().catch(() => null)) as ApiResult | null
-    throw new Error(body?.error ?? body?.message ?? `Request failed (${response.status})`)
+    throw new Error(
+      body?.error ?? body?.message ?? `Request failed (${response.status})`
+    )
   }
 }
 
@@ -60,10 +81,18 @@ export function SetupWizard() {
   const [isTestingVsdc, setIsTestingVsdc] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const [sqlResult, setSqlResult] = useState<{ state: "idle" | "success" | "error"; message?: string; details?: string }>({
+  const [sqlResult, setSqlResult] = useState<{
+    state: "idle" | "success" | "error"
+    message?: string
+    details?: string
+  }>({
     state: "idle",
   })
-  const [vsdcResult, setVsdcResult] = useState<{ state: "idle" | "success" | "error"; message?: string; details?: string }>({
+  const [vsdcResult, setVsdcResult] = useState<{
+    state: "idle" | "success" | "error"
+    message?: string
+    details?: string
+  }>({
     state: "idle",
   })
 
@@ -74,9 +103,15 @@ export function SetupWizard() {
 
   const steps = useMemo(
     () => [
-      { title: "SQL Server / Sage", description: "Configure source ERP connection" },
+      {
+        title: "SQL Server / Sage",
+        description: "Configure source ERP connection",
+      },
       { title: "VSDC / RRA", description: "Configure fiscal gateway access" },
-      { title: "Company / Admin", description: "Set business profile and admin access" },
+      {
+        title: "Company / Admin",
+        description: "Set business profile and admin access",
+      },
     ],
     []
   )
@@ -97,11 +132,18 @@ export function SetupWizard() {
         timeoutMs: 5000,
       })
 
-      setSqlResult({ state: "success", message: result.message ?? "SQL connection test succeeded." })
+      setSqlResult({
+        state: "success",
+        message: result.message ?? "SQL connection test succeeded.",
+      })
       toast.success("SQL connection is valid")
     } catch (error) {
       const message = error instanceof Error ? error.message : "SQL test failed"
-      setSqlResult({ state: "error", message: "SQL connection test failed.", details: message })
+      setSqlResult({
+        state: "error",
+        message: "SQL connection test failed.",
+        details: message,
+      })
       toast.error(message)
     } finally {
       setIsTestingSql(false)
@@ -125,11 +167,19 @@ export function SetupWizard() {
         timeoutMs: 5000,
       })
 
-      setVsdcResult({ state: "success", message: result.message ?? "VSDC connection test succeeded." })
+      setVsdcResult({
+        state: "success",
+        message: result.message ?? "VSDC connection test succeeded.",
+      })
       toast.success("VSDC connection is valid")
     } catch (error) {
-      const message = error instanceof Error ? error.message : "VSDC test failed"
-      setVsdcResult({ state: "error", message: "VSDC connection test failed.", details: message })
+      const message =
+        error instanceof Error ? error.message : "VSDC test failed"
+      setVsdcResult({
+        state: "error",
+        message: "VSDC connection test failed.",
+        details: message,
+      })
       toast.error(message)
     } finally {
       setIsTestingVsdc(false)
@@ -137,7 +187,8 @@ export function SetupWizard() {
   }
 
   const nextStep = async () => {
-    const target = currentStep === 0 ? "sql" : currentStep === 1 ? "vsdc" : "company"
+    const target =
+      currentStep === 0 ? "sql" : currentStep === 1 ? "vsdc" : "company"
     const valid = await form.trigger(target)
 
     if (!valid) {
@@ -162,11 +213,14 @@ export function SetupWizard() {
       await patchJson("/api/settings", mapSettingsPayload(values))
 
       toast.success("Setup completed successfully")
-      toast.info("Admin password capture is complete; backend provisioning endpoint is pending.")
+      toast.info(
+        "Admin password capture is complete; backend provisioning endpoint is pending."
+      )
 
       router.push(ROUTES.login)
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unable to complete setup"
+      const message =
+        error instanceof Error ? error.message : "Unable to complete setup"
       toast.error(message)
     } finally {
       setIsSubmitting(false)
@@ -189,7 +243,9 @@ export function SetupWizard() {
               key={step.title}
               className={`rounded-md border p-3 text-xs ${index === currentStep ? "border-primary bg-primary/5" : "border-border"}`}
             >
-              <p className="font-medium">{index + 1}. {step.title}</p>
+              <p className="font-medium">
+                {index + 1}. {step.title}
+              </p>
               <p className="text-muted-foreground">{step.description}</p>
             </li>
           ))}
@@ -201,7 +257,11 @@ export function SetupWizard() {
           <form onSubmit={form.handleSubmit(submitSetup)} className="space-y-6">
             {currentStep === 0 ? (
               <>
-                <SqlServerStep form={form} onTest={testSqlConnection} isTesting={isTestingSql} />
+                <SqlServerStep
+                  form={form}
+                  onTest={testSqlConnection}
+                  isTesting={isTestingSql}
+                />
                 <TestConnectionResult
                   state={sqlResult.state}
                   title="SQL connection"
@@ -213,7 +273,11 @@ export function SetupWizard() {
 
             {currentStep === 1 ? (
               <>
-                <VsdcStep form={form} onTest={testVsdcConnection} isTesting={isTestingVsdc} />
+                <VsdcStep
+                  form={form}
+                  onTest={testVsdcConnection}
+                  isTesting={isTestingVsdc}
+                />
                 <TestConnectionResult
                   state={vsdcResult.state}
                   title="VSDC connection"
@@ -226,7 +290,12 @@ export function SetupWizard() {
             {currentStep === 2 ? <CompanyInfoStep form={form} /> : null}
 
             <CardFooter className="justify-between border-t px-0 pt-6">
-              <Button type="button" variant="outline" onClick={previousStep} disabled={currentStep === 0 || isSubmitting}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={previousStep}
+                disabled={currentStep === 0 || isSubmitting}
+              >
                 Back
               </Button>
 
