@@ -1,5 +1,10 @@
-import { createCipheriv, createDecipheriv, pbkdf2Sync, randomBytes } from "node:crypto";
-import { env } from "../config/env";
+import {
+  createCipheriv,
+  createDecipheriv,
+  pbkdf2Sync,
+  randomBytes,
+} from "node:crypto";
+import { Env } from "../config/env";
 
 const ALGORITHM = "aes-256-gcm";
 const SALT_LENGTH = 16;
@@ -12,13 +17,21 @@ function deriveKey(secret: string, salt: Buffer): Buffer {
 export function encryptSecret(plainText: string): string {
   const salt = randomBytes(SALT_LENGTH);
   const iv = randomBytes(IV_LENGTH);
-  const key = deriveKey(env.SECRET_ENCRYPTION_KEY, salt);
+  const key = deriveKey(Env.SECRET_ENCRYPTION_KEY, salt);
 
   const cipher = createCipheriv(ALGORITHM, key, iv);
-  const encrypted = Buffer.concat([cipher.update(plainText, "utf8"), cipher.final()]);
+  const encrypted = Buffer.concat([
+    cipher.update(plainText, "utf8"),
+    cipher.final(),
+  ]);
   const tag = cipher.getAuthTag();
 
-  return [salt.toString("base64"), iv.toString("base64"), tag.toString("base64"), encrypted.toString("base64")].join(".");
+  return [
+    salt.toString("base64"),
+    iv.toString("base64"),
+    tag.toString("base64"),
+    encrypted.toString("base64"),
+  ].join(".");
 }
 
 export function decryptSecret(cipherText: string): string {
@@ -32,7 +45,7 @@ export function decryptSecret(cipherText: string): string {
   const iv = Buffer.from(ivB64, "base64");
   const tag = Buffer.from(tagB64, "base64");
   const data = Buffer.from(dataB64, "base64");
-  const key = deriveKey(env.SECRET_ENCRYPTION_KEY, salt);
+  const key = deriveKey(Env.SECRET_ENCRYPTION_KEY, salt);
 
   const decipher = createDecipheriv(ALGORITHM, key, iv);
   decipher.setAuthTag(tag);
