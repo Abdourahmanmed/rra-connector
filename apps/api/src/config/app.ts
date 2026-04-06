@@ -1,4 +1,5 @@
 import express from "express";
+import cors from "cors";
 import { healthRouter } from "../modules/health/health.routes";
 import { setupRouter } from "../modules/setup/setup.routes";
 import { settingsRouter } from "../modules/settings/settings.routes";
@@ -15,8 +16,22 @@ import { errorHandler } from "../middlewares/error-handler";
 
 export function createApp() {
   const app = express();
+  const corsOptions: cors.CorsOptions = {
+    origin: (origin, callback) => {
+      if (!origin || origin === "http://localhost:3000") {
+        callback(null, true);
+        return;
+      }
+
+      callback(new Error("Not allowed by CORS"));
+    },
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  };
 
   app.disable("x-powered-by");
+  app.use(cors(corsOptions));
+  app.options("*", cors(corsOptions));
   app.use(express.json({ limit: "1mb" }));
   app.use(express.urlencoded({ extended: true }));
 
