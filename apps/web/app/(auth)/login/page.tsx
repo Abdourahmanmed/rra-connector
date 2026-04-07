@@ -97,13 +97,22 @@ export default function LoginPage() {
         </CardContent>
 
         <CardFooter>
-          <p className="text-sm text-muted-foreground">
-            New environment? Complete setup first in the{" "}
-            <Link href={ROUTES.setup} className="underline underline-offset-4">
-              setup wizard
-            </Link>
-            .
-          </p>
+          <div className="space-y-2 text-sm text-muted-foreground">
+            <p>
+              Need an admin account?{" "}
+              <Link href={ROUTES.register} className="underline underline-offset-4">
+                Register here
+              </Link>
+              .
+            </p>
+            <p>
+              New environment? Complete setup first in the{" "}
+              <Link href={ROUTES.setup} className="underline underline-offset-4">
+                setup wizard
+              </Link>
+              .
+            </p>
+          </div>
         </CardFooter>
       </Card>
     </main>

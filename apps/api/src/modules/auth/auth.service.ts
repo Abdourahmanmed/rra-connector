@@ -7,6 +7,12 @@ type LoginInput = {
   password: string;
 };
 
+type RegisterInput = {
+  fullName: string;
+  email: string;
+  password: string;
+};
+
 type SafeAuthUser = {
   id: string;
   email: string;
@@ -29,6 +35,23 @@ type LoginFailure = {
 };
 
 export type LoginResult = LoginSuccess | LoginFailure;
+
+type RegisterSuccess = {
+  success: true;
+  data: {
+    id: string;
+    email: string;
+    fullName: string;
+    role: "ADMIN";
+  };
+};
+
+type RegisterFailure = {
+  success: false;
+  error: string;
+};
+
+export type RegisterResult = RegisterSuccess | RegisterFailure;
 
 export type AuthTokenPayload = {
   sub: string;
@@ -152,6 +175,48 @@ function verifyPassword(password: string, storedHash: string): boolean {
 }
 
 export class AuthService {
+  async register(input: RegisterInput): Promise<RegisterResult> {
+    const email = input.email.trim().toLowerCase();
+    const fullName = input.fullName.trim();
+
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        email: {
+          equals: email,
+          mode: "insensitive"
+        }
+      },
+      select: { id: true }
+    });
+
+    if (existingUser) {
+      return {
+        success: false,
+        error: "Email is already registered"
+      };
+    }
+
+    const createdUser = await prisma.user.create({
+      data: {
+        email,
+        fullName,
+        passwordHash: hashPassword(input.password),
+        role: "ADMIN"
+      },
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        role: true
+      }
+    });
+
+    return {
+      success: true,
+      data: createdUser
+    };
+  }
+
   async login(input: LoginInput): Promise<LoginResult> {
     const user = await prisma.user.findFirst({
       where: {
