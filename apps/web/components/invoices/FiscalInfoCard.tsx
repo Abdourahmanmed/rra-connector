@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { getCurrencyFormatter } from "@/lib/currency"
 
 type FiscalResult = {
   id: string
@@ -24,11 +25,7 @@ function formatDate(value: string | null): string {
 }
 
 export function FiscalInfoCard({ fiscalResult, currencyCode }: FiscalInfoCardProps) {
-  const currency = new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: currencyCode || "USD",
-    maximumFractionDigits: 2,
-  })
+  const currency = getCurrencyFormatter(currencyCode)
 
   return (
     <Card>

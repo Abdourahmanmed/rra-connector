@@ -1,5 +1,6 @@
 import { StatusBadge } from "@/components/shared/StatusBadge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { getCurrencyFormatter, getSafeCurrencyCode } from "@/lib/currency"
 
 type InvoiceDetails = {
   id: string
@@ -26,28 +27,6 @@ type InvoiceDetailsCardProps = {
   invoice: InvoiceDetails
 }
 
-const DEFAULT_CURRENCY_CODE = "DJF"
-
-function normalizeCurrencyCode(currencyCode: unknown): string {
-  if (typeof currencyCode !== "string") {
-    return DEFAULT_CURRENCY_CODE
-  }
-
-  const normalized = currencyCode.trim().toUpperCase()
-  if (normalized.length !== 3) {
-    return DEFAULT_CURRENCY_CODE
-  }
-
-  return normalized
-}
-
-const currencyFormatter = (currencyCode: unknown) =>
-  new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: normalizeCurrencyCode(currencyCode),
-    maximumFractionDigits: 2,
-  })
-
 function renderDate(value: string | null): string {
   if (!value) {
     return "-"
@@ -57,7 +36,7 @@ function renderDate(value: string | null): string {
 }
 
 export function InvoiceDetailsCard({ invoice }: InvoiceDetailsCardProps) {
-  const currency = currencyFormatter(invoice.currencyCode)
+  const currency = getCurrencyFormatter(invoice.currencyCode)
 
   return (
     <Card>
@@ -96,7 +75,7 @@ export function InvoiceDetailsCard({ invoice }: InvoiceDetailsCardProps) {
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Currency</p>
-            <p className="font-medium">{normalizeCurrencyCode(invoice.currencyCode)}</p>
+            <p className="font-medium">{getSafeCurrencyCode(invoice.currencyCode)}</p>
           </div>
         </div>
 
