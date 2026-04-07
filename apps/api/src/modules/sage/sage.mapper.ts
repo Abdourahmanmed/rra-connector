@@ -1,6 +1,7 @@
 import type { MappedSageInvoice, MappedSageInvoiceItem, SageHeaderRow, SageLineRow } from "./sage.types";
 
 const DEFAULT_IMPORT_STATUS = "IMPORTED" as const;
+const DEFAULT_CURRENCY_CODE = "DJF";
 
 function pickValue(row: Record<string, unknown>, keys: string[]): unknown {
   for (const key of keys) {
@@ -45,6 +46,19 @@ function toDate(value: unknown, fallback: Date): Date {
   return fallback;
 }
 
+function toCurrencyCode(value: unknown, fallback = DEFAULT_CURRENCY_CODE): string {
+  if (typeof value !== "string") {
+    return fallback;
+  }
+
+  const normalized = value.trim().toUpperCase();
+  if (normalized.length !== 3 || normalized === "0") {
+    return fallback;
+  }
+
+  return normalized;
+}
+
 export function mapSageInvoiceHeader(row: SageHeaderRow): MappedSageInvoice {
   const now = new Date();
   const invoiceDate = toDate(pickValue(row, ["DO_Date", "invoiceDate"]), now);
@@ -65,7 +79,7 @@ export function mapSageInvoiceHeader(row: SageHeaderRow): MappedSageInvoice {
     customerCode: toStringOrNull(pickValue(row, ["CT_Num", "customerCode"])),
     customerName: toStringOrNull(pickValue(row, ["DO_Tiers", "CT_Intitule", "customerName"])),
     customerTin: toStringOrNull(pickValue(row, ["CT_Identifiant", "customerTin"])),
-    currencyCode: toStringOrNull(pickValue(row, ["DO_Devise", "currencyCode"])) ?? "RWF",
+    currencyCode: toCurrencyCode(pickValue(row, ["DO_Devise", "currencyCode"])),
     exchangeRate: toNumber(pickValue(row, ["DO_Cours", "exchangeRate"]), 1),
     invoiceDate,
     dueDate,
