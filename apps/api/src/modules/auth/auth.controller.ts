@@ -1,10 +1,38 @@
 import type { Request, Response } from "express";
-import { loginSchema } from "./auth.schema";
+import { loginSchema, registerSchema } from "./auth.schema";
 import { AuthService } from "./auth.service";
 
 const authService = new AuthService();
 
 export class AuthController {
+  async register(request: Request, response: Response): Promise<void> {
+    const parsed = registerSchema.safeParse(request.body);
+
+    if (!parsed.success) {
+      response.status(400).json({
+        success: false,
+        error: "Invalid register payload",
+        details: parsed.error.flatten()
+      });
+      return;
+    }
+
+    const result = await authService.register(parsed.data);
+
+    if (!result.success) {
+      response.status(409).json({
+        success: false,
+        error: result.error
+      });
+      return;
+    }
+
+    response.status(201).json({
+      success: true,
+      data: result.data
+    });
+  }
+
   async login(request: Request, response: Response): Promise<void> {
     const parsed = loginSchema.safeParse(request.body);
 
