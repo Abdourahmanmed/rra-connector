@@ -1,9 +1,11 @@
 "use client"
 
+import { LayoutDashboard, FileText, LogOut, ScrollText, Settings } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, FileText, Settings, ScrollText } from "lucide-react"
 
+import { Button } from "@/components/ui/button"
+import { useAuth } from "@/hooks/use-auth"
 import { APP_NAME } from "@/lib/constants"
 import { cn } from "@/lib/utils"
 
@@ -36,6 +38,7 @@ type AppSidebarProps = {
 
 export function AppSidebar({ onNavigate }: AppSidebarProps) {
   const pathname = usePathname()
+  const { logout, isLoading } = useAuth()
 
   return (
     <aside className="flex h-full w-full flex-col border-r bg-card/30">
@@ -65,6 +68,22 @@ export function AppSidebar({ onNavigate }: AppSidebarProps) {
           )
         })}
       </nav>
+
+      <div className="border-t p-3">
+        <Button
+          type="button"
+          variant="ghost"
+          className="w-full justify-start gap-2.5 px-3 py-2 text-sm"
+          onClick={() => {
+            onNavigate?.()
+            void logout()
+          }}
+          disabled={isLoading}
+        >
+          <LogOut className="size-4" />
+          <span>{isLoading ? "Loading..." : "Logout"}</span>
+        </Button>
+      </div>
     </aside>
   )
 }

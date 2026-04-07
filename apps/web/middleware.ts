@@ -4,23 +4,25 @@ import { NextResponse } from "next/server"
 import { getAuthCookieName } from "@/lib/auth"
 
 const PUBLIC_AUTH_ROUTES = ["/login", "/register"]
-const PROTECTED_PREFIX = "/dashboard"
+const PROTECTED_PREFIXES = ["/dashboard", "/invoices", "/settings", "/logs"]
 
 export function middleware(request: NextRequest) {
   const token = request.cookies.get(getAuthCookieName())?.value
   const { pathname } = request.nextUrl
 
-  if (pathname.startsWith(PROTECTED_PREFIX) && !token) {
+  const isProtectedRoute = PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix))
+
+  if (isProtectedRoute && !token) {
     return NextResponse.redirect(new URL("/login", request.url))
   }
 
   if (PUBLIC_AUTH_ROUTES.includes(pathname) && token) {
-    return NextResponse.redirect(new URL(PROTECTED_PREFIX, request.url))
+    return NextResponse.redirect(new URL("/dashboard", request.url))
   }
 
   return NextResponse.next()
 }
 
 export const config = {
-  matcher: ["/login", "/register", "/dashboard/:path*"],
+  matcher: ["/login", "/register", "/dashboard/:path*", "/invoices/:path*", "/settings/:path*", "/logs/:path*"],
 }
