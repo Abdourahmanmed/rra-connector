@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { getCurrencyFormatter } from "@/lib/currency"
 
 type InvoiceItem = {
   id: string
@@ -21,11 +22,7 @@ type InvoiceItemsTableProps = {
 }
 
 export function InvoiceItemsTable({ items, currencyCode }: InvoiceItemsTableProps) {
-  const currency = new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: currencyCode || "USD",
-    maximumFractionDigits: 2,
-  })
+  const currency = getCurrencyFormatter(currencyCode)
 
   return (
     <Card>

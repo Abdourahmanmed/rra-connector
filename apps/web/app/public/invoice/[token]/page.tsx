@@ -1,5 +1,7 @@
 import Link from "next/link"
 
+import { getCurrencyFormatter } from "@/lib/currency"
+
 type PublicInvoiceResponse = {
   success: boolean
   data: {
@@ -80,10 +82,7 @@ export default async function PublicInvoicePage({
   }
 
   const { invoice, fiscalResult, documents } = payload.data
-  const currency = new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: invoice.currencyCode || "USD",
-  })
+  const currency = getCurrencyFormatter(invoice.currencyCode)
 
   const pdfDocument = documents.find((document) => document.mimeType === "application/pdf")
 
