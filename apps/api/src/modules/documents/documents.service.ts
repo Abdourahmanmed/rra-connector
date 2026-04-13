@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
-import { mkdir, writeFile } from "node:fs/promises";
+import { access, constants as fsConstants, mkdir, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import { DocumentType, FiscalStatus, GenerationStatus, PdfStatus, type Prisma } from "@prisma/client";
+import { DocumentType, GenerationStatus, InvoiceImportStatus, PdfStatus, type Prisma } from "@prisma/client";
 import { Env } from "../../config/env";
 import { logger } from "../../config/logger";
 import prisma from "../../config/prisma";
@@ -26,28 +26,106 @@ type GeneratePdfResult = {
   fileSizeBytes: number;
   sha256: string;
   generatedAt: string;
+  wasExisting: boolean;
 };
 
 export class DocumentsService {
+  async generateMissingInvoicePdfs(limit = 25): Promise<{ generated: number; skipped: number; failed: number }> {
+    const invoices = await prisma.sageInvoice.findMany({
+      where: {
+        importStatus: InvoiceImportStatus.IMPORTED,
+        pdfStatus: PdfStatus.NOT_REQUESTED,
+        documents: {
+          none: {
+            type: DocumentType.INVOICE_PDF
+          }
+        }
+      },
+      select: { id: true },
+      orderBy: { importedAt: "asc" },
+      take: limit
+    });
+
+    let generated = 0;
+    let skipped = 0;
+    let failed = 0;
+
+    for (const invoice of invoices) {
+      try {
+        const result = await this.generateInvoicePdf(invoice.id);
+        if (result.wasExisting) {
+          skipped += 1;
+        } else {
+          generated += 1;
+        }
+      } catch (error) {
+        failed += 1;
+        logger.error("Invoice PDF generation failed in scheduled run", {
+          invoiceId: invoice.id,
+          error: error instanceof Error ? error.message : "Unknown error"
+        });
+      }
+    }
+
+    return { generated, skipped, failed };
+  }
+
   async generateInvoicePdf(invoiceId: string): Promise<GeneratePdfResult> {
+    const existingPdf = await prisma.generatedDocument.findFirst({
+      where: {
+        sageInvoiceId: invoiceId,
+        type: DocumentType.INVOICE_PDF,
+        status: GenerationStatus.GENERATED
+      },
+      orderBy: { generatedAt: "desc" }
+    });
+
+    if (existingPdf) {
+      await prisma.sageInvoice.update({
+        where: { id: invoiceId },
+        data: { pdfStatus: PdfStatus.GENERATED }
+      });
+
+      await prisma.syncLog.create({
+        data: {
+          sageInvoiceId: invoiceId,
+          source: "DOCUMENT_ENGINE",
+          level: "INFO",
+          message: "Invoice PDF generation skipped because PDF already exists",
+          context: {
+            documentId: existingPdf.id,
+            fileName: existingPdf.fileName
+          }
+        }
+      });
+
+      logger.info("Invoice PDF generation skipped because PDF already exists", {
+        invoiceId,
+        documentId: existingPdf.id
+      });
+
+      return {
+        documentId: existingPdf.id,
+        invoiceId,
+        fileName: existingPdf.fileName,
+        storagePath: existingPdf.storagePath,
+        mimeType: existingPdf.mimeType,
+        fileSizeBytes: existingPdf.fileSizeBytes ? Number(existingPdf.fileSizeBytes) : 0,
+        sha256: existingPdf.sha256 ?? "",
+        generatedAt: (existingPdf.generatedAt ?? existingPdf.createdAt).toISOString(),
+        wasExisting: true
+      };
+    }
+
     const invoice = await prisma.sageInvoice.findUnique({
       where: { id: invoiceId },
       include: {
-        items: { orderBy: { lineNo: "asc" } },
-        fiscalResult: true
+        items: { orderBy: { lineNo: "asc" } }
       }
     });
 
     if (!invoice) {
       throw new DocumentGenerationError("Invoice not found", 404, "INVOICE_NOT_FOUND");
-    }
-
-    if (invoice.fiscalStatus !== FiscalStatus.ACCEPTED || !invoice.fiscalResult) {
-      throw new DocumentGenerationError(
-        "Invoice must be fiscalized successfully before PDF generation",
-        409,
-        "INVOICE_NOT_FISCALIZED"
-      );
     }
 
     await prisma.sageInvoice.update({
@@ -71,9 +149,9 @@ export class DocumentsService {
         discountAmount: this.toNumber(invoice.discountAmount),
         taxAmount: this.toNumber(invoice.taxAmount),
         totalAmount: this.toNumber(invoice.totalAmount),
-        rcptNo: invoice.fiscalResult.rcptNo,
-        verificationUrl: invoice.fiscalResult.verificationUrl,
-        qrCodeData: invoice.fiscalResult.qrCodeData,
+        rcptNo: "N/A",
+        verificationUrl: null,
+        qrCodeData: null,
         items: invoice.items.map((item) => ({
           lineNo: item.lineNo,
           itemName: item.itemName,
@@ -164,7 +242,8 @@ export class DocumentsService {
         mimeType: "application/pdf",
         fileSizeBytes: pdfBuffer.length,
         sha256,
-        generatedAt: generatedAt.toISOString()
+        generatedAt: generatedAt.toISOString(),
+        wasExisting: false
       };
     } catch (error) {
       await prisma.sageInvoice.update({
@@ -191,6 +270,38 @@ export class DocumentsService {
 
       throw new DocumentGenerationError("Unable to generate invoice PDF", 500, "PDF_GENERATION_FAILED");
     }
+  }
+
+  async getDocumentFile(documentId: string): Promise<{
+    fileName: string;
+    mimeType: string;
+    storagePath: string;
+  }> {
+    const document = await prisma.generatedDocument.findUnique({
+      where: { id: documentId },
+      select: {
+        id: true,
+        fileName: true,
+        mimeType: true,
+        storagePath: true
+      }
+    });
+
+    if (!document) {
+      throw new DocumentGenerationError("Document not found", 404, "DOCUMENT_NOT_FOUND");
+    }
+
+    try {
+      await access(document.storagePath, fsConstants.R_OK);
+    } catch {
+      throw new DocumentGenerationError("Document file not found on storage", 404, "DOCUMENT_FILE_NOT_FOUND");
+    }
+
+    return {
+      fileName: document.fileName,
+      mimeType: document.mimeType,
+      storagePath: document.storagePath
+    };
   }
 
   private toNumber(value: Prisma.Decimal | number): number {

@@ -15,6 +15,7 @@ type ApiInvoice = {
   invoiceDate: string
   totalAmount: number
   fiscalStatus: string
+  pdfStatus: string
 }
 
 type InvoicesResponse = {
@@ -104,6 +105,7 @@ export default function InvoicesPage() {
         customer: invoice.customerName ?? "-",
         amount: invoice.totalAmount,
         status: invoice.fiscalStatus,
+        pdfStatus: invoice.pdfStatus,
       })),
     [rows]
   )

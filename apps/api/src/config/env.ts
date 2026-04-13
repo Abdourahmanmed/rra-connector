@@ -24,6 +24,7 @@ const envSchema = z.object({
   COMPANY_TIN: z.string().default("N/A"),
   COMPANY_ADDRESS: z.string().default("Kigali, Rwanda"),
   INVOICE_POLLER_CRON: z.string().default("*/5 * * * * *"),
+  GENERATE_MISSING_PDFS_CRON: z.string().default("*/10 * * * * *"),
   RETRY_FAILED_SUBMISSIONS_CRON: z.string().default("*/30 * * * * *"),
   CLEANUP_PUBLIC_LINKS_CRON: z.string().default("*/5 * * * *"),
   SYNC_RRA_CODES_CRON: z.string().default("0 */6 * * *"),

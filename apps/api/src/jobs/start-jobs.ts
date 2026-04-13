@@ -1,6 +1,7 @@
 import { Env } from "../config/env";
 import { logger } from "../config/logger";
 import {
+  runGenerateMissingPdfsJob,
   runCleanupPublicLinksJob,
   runInvoicePollerJob,
   runRetryFailedSubmissionsJob,
@@ -89,6 +90,12 @@ export function startJobsScheduler(): void {
       configuredSchedule: Env.INVOICE_POLLER_CRON,
       defaultSchedule: "*/5 * * * * *",
       run: () => runInvoicePollerJob()
+    },
+    {
+      name: "generate-missing-pdfs",
+      configuredSchedule: Env.GENERATE_MISSING_PDFS_CRON,
+      defaultSchedule: "*/10 * * * * *",
+      run: () => runGenerateMissingPdfsJob()
     },
     {
       name: "retry-failed-submissions",

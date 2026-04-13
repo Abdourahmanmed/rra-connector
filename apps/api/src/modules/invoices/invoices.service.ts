@@ -146,7 +146,8 @@ export class InvoicesService {
         storagePath: document.storagePath,
         fileSizeBytes: document.fileSizeBytes !== null ? Number(document.fileSizeBytes) : null,
         generatedAt: document.generatedAt?.toISOString() ?? null,
-        expiresAt: document.expiresAt?.toISOString() ?? null
+        expiresAt: document.expiresAt?.toISOString() ?? null,
+        downloadUrl: `/api/documents/${document.id}/download`
       })),
       publicLinks: invoice.publicLinks.map((link) => ({
         id: link.id,

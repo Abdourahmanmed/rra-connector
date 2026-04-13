@@ -9,14 +9,11 @@ type InvoiceDocument = {
   storagePath: string
   fileSizeBytes: number | null
   generatedAt: string | null
+  downloadUrl: string
 }
 
 type PdfPreviewCardProps = {
   documents: InvoiceDocument[]
-}
-
-function canOpen(url: string): boolean {
-  return url.startsWith("http://") || url.startsWith("https://")
 }
 
 export function PdfPreviewCard({ documents }: PdfPreviewCardProps) {
@@ -43,22 +40,27 @@ export function PdfPreviewCard({ documents }: PdfPreviewCardProps) {
               <p>
                 <span className="text-muted-foreground">Size:</span> {latestPdf.fileSizeBytes ?? "-"}
               </p>
+              <p>
+                <span className="text-muted-foreground">Generated:</span>{" "}
+                {latestPdf.generatedAt ? new Date(latestPdf.generatedAt).toLocaleString() : "-"}
+              </p>
             </div>
-            {canOpen(latestPdf.storagePath) ? (
+            <div className="flex flex-wrap gap-3">
               <a
-                href={latestPdf.storagePath}
+                href={latestPdf.downloadUrl}
                 target="_blank"
                 rel="noreferrer"
                 className="inline-block text-sm font-medium text-primary underline-offset-4 hover:underline"
               >
-                Open latest PDF
+                Open PDF
               </a>
-            ) : (
-              <p className="text-sm text-muted-foreground">Latest PDF is stored on server path: {latestPdf.storagePath}</p>
-            )}
+              <a href={latestPdf.downloadUrl} download className="inline-block text-sm font-medium text-primary underline-offset-4 hover:underline">
+                Download PDF
+              </a>
+            </div>
           </>
         ) : (
-          <p className="text-sm text-muted-foreground">No PDF generated yet.</p>
+          <p className="text-sm text-muted-foreground">No PDF generated yet. A background job will generate it automatically.</p>
         )}
       </CardContent>
     </Card>
