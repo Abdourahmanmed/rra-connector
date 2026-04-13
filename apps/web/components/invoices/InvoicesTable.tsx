@@ -17,6 +17,7 @@ type InvoiceRow = {
   customer: string
   amount: number
   status: string
+  pdfStatus: string
 }
 
 type InvoicesTableProps = {
@@ -79,6 +80,11 @@ export function InvoicesTable({
         header: "Status",
         cell: ({ row }) => <StatusBadge status={row.original.status} />,
       },
+      {
+        accessorKey: "pdfStatus",
+        header: "PDF",
+        cell: ({ row }) => <StatusBadge status={row.original.pdfStatus} />,
+      },
     ],
     []
   )
@@ -130,7 +136,7 @@ export function InvoicesTable({
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
+                <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
                   Loading invoices...
                 </TableCell>
               </TableRow>
@@ -148,7 +154,7 @@ export function InvoicesTable({
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
+                <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
                   No invoices found.
                 </TableCell>
               </TableRow>

@@ -75,6 +75,7 @@ export type InvoiceDocument = {
   fileSizeBytes: number | null;
   generatedAt: string | null;
   expiresAt: string | null;
+  downloadUrl: string;
 };
 
 export type InvoicePublicLink = {

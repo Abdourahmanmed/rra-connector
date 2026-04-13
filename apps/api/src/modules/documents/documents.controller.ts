@@ -1,4 +1,5 @@
 import type { Request, Response } from "express";
+import { resolve } from "node:path";
 import { z } from "zod";
 import { DocumentsService } from "./documents.service";
 
@@ -27,6 +28,38 @@ export class DocumentsController {
         success: true,
         data: result
       });
+    } catch (error) {
+      if (error instanceof Error && "statusCode" in error) {
+        response.status((error as { statusCode: number }).statusCode).json({
+          success: false,
+          error: error.message,
+          code: (error as { code?: string }).code
+        });
+        return;
+      }
+
+      throw error;
+    }
+  }
+
+  async downloadDocument(request: Request, response: Response): Promise<void> {
+    const parsed = generatePdfParamsSchema.safeParse(request.params);
+
+    if (!parsed.success) {
+      response.status(400).json({
+        success: false,
+        error: "Invalid document id",
+        details: parsed.error.flatten()
+      });
+      return;
+    }
+
+    try {
+      const document = await documentsService.getDocumentFile(parsed.data.id);
+
+      response.setHeader("Content-Type", document.mimeType);
+      response.setHeader("Content-Disposition", `inline; filename="${document.fileName}"`);
+      response.sendFile(resolve(document.storagePath));
     } catch (error) {
       if (error instanceof Error && "statusCode" in error) {
         response.status((error as { statusCode: number }).statusCode).json({

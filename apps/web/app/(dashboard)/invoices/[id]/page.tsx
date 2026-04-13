@@ -71,6 +71,7 @@ type InvoiceDetail = {
     fileSizeBytes: number | null
     generatedAt: string | null
     expiresAt: string | null
+    downloadUrl: string
   }>
   publicLinks: Array<{
     id: string
@@ -98,7 +99,6 @@ export default function InvoiceDetailPage() {
   const [error, setError] = useState<string | null>(null)
 
   const [isFiscalizing, setIsFiscalizing] = useState(false)
-  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
   const [isGeneratingQr, setIsGeneratingQr] = useState(false)
 
   const loadInvoice = useCallback(async () => {
@@ -150,25 +150,6 @@ export default function InvoiceDetailPage() {
     }
   }
 
-  async function handleGeneratePdf() {
-    if (!token || !invoice) {
-      return
-    }
-
-    setIsGeneratingPdf(true)
-    try {
-      await apiClient.post(`/api/invoices/${invoice.id}/generate-pdf`, undefined, {
-        headers: withAuthHeader(token),
-      })
-      toast.success("PDF generation started.")
-      await loadInvoice()
-    } catch (actionError) {
-      toast.error(getApiErrorMessage(actionError, "Could not generate invoice PDF."))
-    } finally {
-      setIsGeneratingPdf(false)
-    }
-  }
-
   async function handleGenerateQr() {
     if (!token || !invoice) {
       return
@@ -203,9 +184,6 @@ export default function InvoiceDetailPage() {
           <div className="flex flex-wrap gap-2">
             <Button onClick={handleFiscalize} disabled={isLoading || isFiscalizing || !invoice}>
               {isFiscalizing ? "Fiscalizing..." : "Fiscalize"}
-            </Button>
-            <Button variant="outline" onClick={handleGeneratePdf} disabled={isLoading || isGeneratingPdf || !invoice}>
-              {isGeneratingPdf ? "Generating PDF..." : "Generate PDF"}
             </Button>
             <Button variant="secondary" onClick={handleGenerateQr} disabled={isLoading || isGeneratingQr || !invoice}>
               {isGeneratingQr ? "Generating QR..." : "Generate QR"}
