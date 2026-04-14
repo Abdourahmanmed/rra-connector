@@ -21,6 +21,7 @@ import { CompanyInfoStep } from "@/components/setup/CompanyInfoStep"
 import { SqlServerStep } from "@/components/setup/SqlServerStep"
 import { TestConnectionResult } from "@/components/setup/TestConnectionResult"
 import { VsdcStep } from "@/components/setup/VsdcStep"
+import { getApiBaseUrl } from "@/lib/api/url"
 import { ROUTES } from "@/lib/constants"
 import {
   mapSettingsPayload,
@@ -31,8 +32,7 @@ import {
   type SetupFormValues,
 } from "@/lib/setup"
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? ""
-console.log(process.env.NEXT_PUBLIC_API_BASE_URL)
+const API_BASE_URL = getApiBaseUrl()
 
 async function postJson<T extends ApiResult>(
   path: string,
