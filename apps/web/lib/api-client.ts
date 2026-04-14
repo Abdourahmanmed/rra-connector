@@ -1,3 +1,5 @@
+import { getApiBaseUrl } from "@/lib/api/url"
+
 export type ApiClientConfig = {
   baseUrl?: string
   defaultHeaders?: HeadersInit
@@ -14,7 +16,7 @@ export class ApiClient {
   private readonly defaultHeaders: HeadersInit
 
   constructor(config: ApiClientConfig = {}) {
-    this.baseUrl = config.baseUrl ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? ""
+    this.baseUrl = config.baseUrl ?? getApiBaseUrl()
     this.defaultHeaders = {
       "Content-Type": "application/json",
       ...config.defaultHeaders,

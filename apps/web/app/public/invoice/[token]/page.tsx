@@ -1,6 +1,7 @@
 import Link from "next/link"
 
 import { getCurrencyFormatter } from "@/lib/currency"
+import { getApiBaseUrl } from "@/lib/api/url"
 
 type PublicInvoiceResponse = {
   success: boolean
@@ -26,7 +27,7 @@ type PublicInvoiceResponse = {
   error?: string
 }
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? ""
+const API_BASE_URL = getApiBaseUrl()
 const COMPANY_NAME = process.env.NEXT_PUBLIC_COMPANY_NAME ?? "Company"
 
 const dateFormatter = new Intl.DateTimeFormat("en-US", {

@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { toBackendUrl } from "@/lib/api/url"
 
 type InvoiceDocument = {
   id: string
@@ -18,6 +19,7 @@ type PdfPreviewCardProps = {
 
 export function PdfPreviewCard({ documents }: PdfPreviewCardProps) {
   const latestPdf = documents.find((document) => document.type === "INVOICE_PDF")
+  const latestPdfUrl = latestPdf ? toBackendUrl(latestPdf.downloadUrl) : null
 
   return (
     <Card>
@@ -47,14 +49,18 @@ export function PdfPreviewCard({ documents }: PdfPreviewCardProps) {
             </div>
             <div className="flex flex-wrap gap-3">
               <a
-                href={latestPdf.downloadUrl}
+                href={latestPdfUrl ?? undefined}
                 target="_blank"
                 rel="noreferrer"
                 className="inline-block text-sm font-medium text-primary underline-offset-4 hover:underline"
               >
                 Open PDF
               </a>
-              <a href={latestPdf.downloadUrl} download className="inline-block text-sm font-medium text-primary underline-offset-4 hover:underline">
+              <a
+                href={latestPdfUrl ?? undefined}
+                download
+                className="inline-block text-sm font-medium text-primary underline-offset-4 hover:underline"
+              >
                 Download PDF
               </a>
             </div>

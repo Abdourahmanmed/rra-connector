@@ -2,6 +2,16 @@
 
 This is a Next.js template with shadcn/ui.
 
+## Environment variables
+
+Create `apps/web/.env.local` and define the backend API origin:
+
+```bash
+NEXT_PUBLIC_API_URL=http://localhost:4000
+```
+
+`NEXT_PUBLIC_API_BASE_URL` is still supported as a fallback for backward compatibility, but `NEXT_PUBLIC_API_URL` is the preferred source of truth.
+
 ## Adding components
 
 To add components to your app, run the following command:
