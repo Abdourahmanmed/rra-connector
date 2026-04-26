@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useRouter } from "next/navigation"
-import { useMemo, useState } from "react"
+import { useMemo, useState, type ChangeEvent } from "react"
 import { useForm } from "react-hook-form"
 import { toast } from "sonner"
 
@@ -80,6 +80,8 @@ export function SetupWizard() {
   const [isTestingSql, setIsTestingSql] = useState(false)
   const [isTestingVsdc, setIsTestingVsdc] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [logoFile, setLogoFile] = useState<File | null>(null)
+  const [logoPreviewUrl, setLogoPreviewUrl] = useState<string | null>(null)
 
   const [sqlResult, setSqlResult] = useState<{
     state: "idle" | "success" | "error"
@@ -201,6 +203,36 @@ export function SetupWizard() {
 
   const previousStep = () => setCurrentStep((step) => Math.max(step - 1, 0))
 
+  const handleLogoChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null
+    setLogoFile(file)
+    setLogoPreviewUrl(file ? URL.createObjectURL(file) : null)
+  }
+
+  const uploadLogo = async (): Promise<{ logoUrl: string; logoPath: string } | null> => {
+    if (!logoFile) {
+      return null
+    }
+
+    const formData = new FormData()
+    formData.append("logo", logoFile)
+
+    const response = await fetch(`${API_BASE_URL}/api/settings/logo`, {
+      method: "POST",
+      body: formData,
+    })
+
+    const body = (await response.json().catch(() => null)) as
+      | { success: boolean; data?: { logoUrl: string; logoPath: string }; error?: string }
+      | null
+
+    if (!response.ok || !body?.success || !body.data) {
+      throw new Error(body?.error ?? "Failed to upload logo")
+    }
+
+    return body.data
+  }
+
   const submitSetup = async (values: SetupFormValues) => {
     setIsSubmitting(true)
 
@@ -210,7 +242,17 @@ export function SetupWizard() {
         vsdc: mapVsdcPayload(values.vsdc),
       })
 
-      await patchJson("/api/settings", mapSettingsPayload(values))
+      const uploadedLogo = await uploadLogo()
+      const payload = mapSettingsPayload(values)
+
+      if (uploadedLogo) {
+        payload.company.logoUrl = uploadedLogo.logoUrl
+        payload.company.logoPath = uploadedLogo.logoPath
+        payload.seller.logoUrl = uploadedLogo.logoUrl
+        payload.seller.logoPath = uploadedLogo.logoPath
+      }
+
+      await patchJson("/api/settings", payload)
 
       toast.success("Setup completed successfully")
       toast.info(
@@ -287,7 +329,7 @@ export function SetupWizard() {
               </>
             ) : null}
 
-            {currentStep === 2 ? <CompanyInfoStep form={form} /> : null}
+            {currentStep === 2 ? <CompanyInfoStep form={form} logoPreviewUrl={logoPreviewUrl} onLogoChange={handleLogoChange} /> : null}
 
             <CardFooter className="justify-between border-t px-0 pt-6">
               <Button

@@ -128,6 +128,8 @@ model Setting {
   sqlUsername          String
   sqlPasswordEncrypted String
   sqlAuthType          SqlAuthType @default(SQL_AUTH)
+  companyLogoPath      String?
+  companyLogoUrl       String?
 
   isActive             Boolean     @default(true)
   createdAt            DateTime    @default(now())

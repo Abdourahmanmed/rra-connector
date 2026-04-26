@@ -1,10 +1,21 @@
+import { randomUUID } from "node:crypto";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { extname, join, resolve } from "node:path";
 import type { SqlAuthType } from "@prisma/client";
 import prisma from "../../config/prisma";
+import { Env } from "../../config/env";
 import { encryptSecret } from "../../services/secret-crypto.service";
 import type { updateSettingsSchema } from "./settings.schema";
 import type { z } from "zod";
 
 const SETUP_KEY = "connector_setup";
+
+const ALLOWED_MIME_TYPES = new Map<string, string>([
+  ["image/png", "png"],
+  ["image/jpeg", "jpg"],
+  ["image/webp", "webp"],
+  ["image/svg+xml", "svg"]
+]);
 
 type UpdateSettingsInput = z.infer<typeof updateSettingsSchema>;
 
@@ -55,6 +66,12 @@ type SafeSettingsResponse = {
   };
 };
 
+type UploadLogoInput = {
+  fileName: string;
+  mimeType: string;
+  fileBuffer: Buffer;
+};
+
 export class SettingsService {
   async getSettings(): Promise<SafeSettingsResponse | null> {
     let setting;
@@ -70,7 +87,9 @@ export class SettingsService {
           sqlUsername: true,
           sqlPasswordEncrypted: true,
           sqlAuthType: true,
-          value: true
+          value: true,
+          companyLogoPath: true,
+          companyLogoUrl: true
         }
       });
     } catch (error) {
@@ -86,7 +105,7 @@ export class SettingsService {
     const value = this.parseValue(setting.value);
 
     return {
-      company: value.company ?? {},
+      company: { ...(value.company ?? {}), ...(value.company?.logoPath ? {} : { logoPath: setting.companyLogoPath ?? undefined }), ...(value.company?.logoUrl ? {} : { logoUrl: setting.companyLogoUrl ?? undefined }) },
       publicUrl: value.publicUrl ?? null,
       seller: value.seller ?? {},
       vsdc: {
@@ -105,6 +124,68 @@ export class SettingsService {
         hasPassword: Boolean(setting.sqlPasswordEncrypted)
       }
     };
+  }
+
+  async updateLogo(input: UploadLogoInput): Promise<{ logoUrl: string; logoPath: string; fileName: string }> {
+    const fileExtension = ALLOWED_MIME_TYPES.get(input.mimeType);
+
+    if (!fileExtension) {
+      throw new Error("Unsupported image format. Allowed formats: png, jpg/jpeg, webp, svg.");
+    }
+
+    if (input.fileBuffer.length > Env.MAX_LOGO_FILE_SIZE_BYTES) {
+      throw new Error(`Logo file exceeds max size of ${Env.MAX_LOGO_FILE_SIZE_BYTES} bytes.`);
+    }
+
+    if (input.mimeType === "image/svg+xml") {
+      const svgContent = input.fileBuffer.toString("utf8").toLowerCase();
+      if (svgContent.includes("<script") || svgContent.includes("onload=") || svgContent.includes("onerror=")) {
+        throw new Error("SVG file contains unsafe content.");
+      }
+    }
+
+    const setting = await prisma.setting.findFirst({
+      where: { key: SETUP_KEY, isActive: true },
+      select: { id: true, value: true }
+    });
+
+    if (!setting) {
+      throw new Error("Setup must be completed before uploading a logo.");
+    }
+
+    const storageDir = resolve(Env.LOGOS_STORAGE_PATH);
+    await mkdir(storageDir, { recursive: true });
+
+    const normalizedName = input.fileName.replaceAll(/[^a-zA-Z0-9_.-]/g, "-");
+    const baseName = normalizedName.replace(extname(normalizedName), "") || "logo";
+    const fileName = `${baseName}-${Date.now()}-${randomUUID()}.${fileExtension}`;
+    const logoPath = join(storageDir, fileName);
+    const logoUrl = `/api/settings/logo/${fileName}`;
+
+    await writeFile(logoPath, input.fileBuffer);
+
+    const parsed = this.parseValue(setting.value);
+    const previousPaths = [parsed.company?.logoPath, parsed.seller?.logoPath].filter((value): value is string => Boolean(value));
+
+    parsed.company = { ...(parsed.company ?? {}), logoPath, logoUrl };
+    parsed.seller = { ...(parsed.seller ?? {}), logoPath, logoUrl };
+
+    await prisma.setting.update({
+      where: { id: setting.id },
+      data: {
+        value: JSON.stringify(parsed),
+        companyLogoPath: logoPath,
+        companyLogoUrl: logoUrl
+      }
+    });
+
+    for (const previousPath of previousPaths) {
+      if (previousPath !== logoPath && previousPath.startsWith(storageDir)) {
+        await rm(previousPath, { force: true });
+      }
+    }
+
+    return { logoUrl, logoPath, fileName };
   }
 
   async updateSettings(input: UpdateSettingsInput): Promise<SafeSettingsResponse | null> {
@@ -165,6 +246,8 @@ export class SettingsService {
             input.sql?.password !== undefined
               ? encryptSecret(input.sql.password)
               : current.sqlPasswordEncrypted,
+          companyLogoPath: input.company?.logoPath ?? input.seller?.logoPath,
+          companyLogoUrl: input.company?.logoUrl ?? input.seller?.logoUrl,
           value: JSON.stringify(mergedValue)
         }
       });
@@ -175,6 +258,33 @@ export class SettingsService {
     }
 
     return this.getSettings();
+  }
+
+  async readLogo(fileName: string): Promise<{ content: Buffer; mimeType: string }> {
+    const safeFileName = fileName.replaceAll(/[^a-zA-Z0-9_.-]/g, "");
+    if (!safeFileName) {
+      throw new Error("Invalid logo filename");
+    }
+
+    const filePath = join(resolve(Env.LOGOS_STORAGE_PATH), safeFileName);
+    const extension = extname(safeFileName).toLowerCase();
+    const mimeType =
+      extension === ".png"
+        ? "image/png"
+        : extension === ".jpg" || extension === ".jpeg"
+          ? "image/jpeg"
+          : extension === ".webp"
+            ? "image/webp"
+            : extension === ".svg"
+              ? "image/svg+xml"
+              : null;
+
+    if (!mimeType) {
+      throw new Error("Unsupported logo extension");
+    }
+
+    const content = await readFile(filePath);
+    return { content, mimeType };
   }
 
   private parseValue(rawValue: string | null): StoredSettingsValue {
