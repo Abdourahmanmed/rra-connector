@@ -102,6 +102,63 @@ export function CompanyInfoStep({ form }: CompanyInfoStepProps) {
           )}
         />
 
+
+        <FormField
+          control={form.control}
+          name="company.website"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Website URL</FormLabel>
+              <FormControl>
+                <Input placeholder="https://example.com" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="company.logoUrl"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Invoice Logo URL</FormLabel>
+              <FormControl>
+                <Input placeholder="https://cdn.example.com/logo.png" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="company.logoPath"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Invoice Logo Path (optional)</FormLabel>
+              <FormControl>
+                <Input placeholder="/uploads/invoice-logo.png" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="company.bankDetails"
+          render={({ field }) => (
+            <FormItem className="md:col-span-2">
+              <FormLabel>Bank Details (one account per line)</FormLabel>
+              <FormControl>
+                <Input placeholder="Bank of Kigali - 1000..." {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
         <FormField
           control={form.control}
           name="company.adminPassword"

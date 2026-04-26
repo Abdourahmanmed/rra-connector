@@ -22,7 +22,8 @@ export class DocumentsController {
     }
 
     try {
-      const result = await documentsService.generateInvoicePdf(parsed.data.id);
+      const forceRegenerate = request.query.force === "true";
+      const result = await documentsService.generateInvoicePdf(parsed.data.id, { forceRegenerate });
 
       response.status(200).json({
         success: true,

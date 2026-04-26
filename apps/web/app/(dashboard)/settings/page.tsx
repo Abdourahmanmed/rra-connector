@@ -37,6 +37,10 @@ type SettingsResponse = {
       address?: string
       phone?: string
       email?: string
+      website?: string
+      logoUrl?: string
+      logoPath?: string
+      bankDetails?: string
     }
     publicUrl: string | null
     seller: {
@@ -45,6 +49,10 @@ type SettingsResponse = {
       address?: string
       phone?: string
       email?: string
+      website?: string
+      logoUrl?: string
+      logoPath?: string
+      bankDetails?: string
     }
     vsdc: {
       baseUrl: string | null
@@ -87,6 +95,10 @@ export default function SettingsPage() {
         sellerPhone: setupDefaultValues.company.sellerPhone,
         sellerEmail: setupDefaultValues.company.sellerEmail,
         publicBaseUrl: setupDefaultValues.company.publicBaseUrl,
+        website: setupDefaultValues.company.website,
+        logoUrl: setupDefaultValues.company.logoUrl,
+        logoPath: setupDefaultValues.company.logoPath,
+        bankDetails: setupDefaultValues.company.bankDetails,
       },
     },
   })
@@ -131,6 +143,10 @@ export default function SettingsPage() {
             sellerPhone: current.seller.phone ?? current.company.phone ?? "",
             sellerEmail: current.seller.email ?? current.company.email ?? "",
             publicBaseUrl: current.publicUrl ?? "",
+            website: current.seller.website ?? current.company.website ?? "",
+            logoUrl: current.seller.logoUrl ?? current.company.logoUrl ?? "",
+            logoPath: current.seller.logoPath ?? current.company.logoPath ?? "",
+            bankDetails: current.seller.bankDetails ?? current.company.bankDetails ?? "",
           },
         })
       } catch {
@@ -245,6 +261,10 @@ export default function SettingsPage() {
             address: values.company.sellerAddress,
             phone: values.company.sellerPhone,
             email: values.company.sellerEmail,
+            website: values.company.website || undefined,
+            logoUrl: values.company.logoUrl || undefined,
+            logoPath: values.company.logoPath || undefined,
+            bankDetails: values.company.bankDetails || undefined,
           },
           publicUrl: values.company.publicBaseUrl,
           seller: {
@@ -253,6 +273,10 @@ export default function SettingsPage() {
             address: values.company.sellerAddress,
             phone: values.company.sellerPhone,
             email: values.company.sellerEmail,
+            website: values.company.website || undefined,
+            logoUrl: values.company.logoUrl || undefined,
+            logoPath: values.company.logoPath || undefined,
+            bankDetails: values.company.bankDetails || undefined,
           },
           vsdc: {
             baseUrl: values.vsdc.vsdcBaseUrl,
@@ -349,6 +373,34 @@ export default function SettingsPage() {
                       <FormItem>
                         <FormLabel>Public Base URL</FormLabel>
                         <FormControl><Input placeholder="https://connector.company.com" {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                    <FormField control={form.control} name="company.website" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Website URL</FormLabel>
+                        <FormControl><Input placeholder="https://company.com" {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                    <FormField control={form.control} name="company.logoUrl" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Invoice Logo URL</FormLabel>
+                        <FormControl><Input placeholder="https://cdn.company.com/logo.png" {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                    <FormField control={form.control} name="company.logoPath" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Invoice Logo Path</FormLabel>
+                        <FormControl><Input placeholder="/uploads/invoice-logo.png" {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                    <FormField control={form.control} name="company.bankDetails" render={({ field }) => (
+                      <FormItem className="md:col-span-2">
+                        <FormLabel>Bank details (one per line)</FormLabel>
+                        <FormControl><Input placeholder="Bank of Kigali - 1000..." {...field} /></FormControl>
                         <FormMessage />
                       </FormItem>
                     )} />
