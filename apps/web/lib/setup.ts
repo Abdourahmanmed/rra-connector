@@ -23,6 +23,10 @@ export const setupSchema = z.object({
     sellerPhone: z.string().min(1, "Seller phone is required"),
     sellerEmail: z.string().email("Provide a valid seller email"),
     publicBaseUrl: z.string().url("Provide a valid public URL"),
+    logoUrl: z.string().url("Provide a valid logo URL").optional().or(z.literal("")),
+    logoPath: z.string().optional(),
+    bankDetails: z.string().optional(),
+    website: z.string().url("Provide a valid website URL").optional().or(z.literal("")),
     adminPassword: z.string().min(8, "Admin password must be at least 8 characters"),
   }),
 })
@@ -59,6 +63,10 @@ export const setupDefaultValues: SetupFormValues = {
     sellerPhone: "",
     sellerEmail: "",
     publicBaseUrl: "",
+    logoUrl: "",
+    logoPath: "",
+    bankDetails: "",
+    website: "",
     adminPassword: "",
   },
 }
@@ -80,6 +88,10 @@ export function mapSettingsPayload(values: SetupFormValues) {
       address: values.company.sellerAddress,
       phone: values.company.sellerPhone,
       email: values.company.sellerEmail,
+      website: values.company.website || undefined,
+      logoUrl: values.company.logoUrl || undefined,
+      logoPath: values.company.logoPath || undefined,
+      bankDetails: values.company.bankDetails || undefined,
     },
     publicUrl: values.company.publicBaseUrl,
     seller: {
@@ -88,6 +100,10 @@ export function mapSettingsPayload(values: SetupFormValues) {
       address: values.company.sellerAddress,
       phone: values.company.sellerPhone,
       email: values.company.sellerEmail,
+      website: values.company.website || undefined,
+      logoUrl: values.company.logoUrl || undefined,
+      logoPath: values.company.logoPath || undefined,
+      bankDetails: values.company.bankDetails || undefined,
     },
   }
 }

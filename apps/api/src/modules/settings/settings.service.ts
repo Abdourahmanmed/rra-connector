@@ -14,6 +14,10 @@ type ProfileInfo = {
   address?: string;
   phone?: string;
   email?: string;
+  website?: string;
+  logoUrl?: string;
+  logoPath?: string;
+  bankDetails?: string;
 };
 
 type StoredVsdcSettings = {

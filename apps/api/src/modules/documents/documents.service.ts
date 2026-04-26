@@ -29,6 +29,33 @@ type GeneratePdfResult = {
   wasExisting: boolean;
 };
 
+type StoredSettingsValue = {
+  company?: {
+    name?: string;
+    tin?: string;
+    address?: string;
+    phone?: string;
+    email?: string;
+    website?: string;
+    logoUrl?: string;
+    logoPath?: string;
+    bankDetails?: string;
+  };
+  seller?: {
+    name?: string;
+    tin?: string;
+    address?: string;
+    phone?: string;
+    email?: string;
+    website?: string;
+    logoUrl?: string;
+    logoPath?: string;
+    bankDetails?: string;
+  };
+};
+
+const SETUP_KEY = "connector_setup";
+
 export class DocumentsService {
   async generateMissingInvoicePdfs(limit = 25): Promise<{ generated: number; skipped: number; failed: number }> {
     const invoices = await prisma.sageInvoice.findMany({
@@ -70,7 +97,7 @@ export class DocumentsService {
     return { generated, skipped, failed };
   }
 
-  async generateInvoicePdf(invoiceId: string): Promise<GeneratePdfResult> {
+  async generateInvoicePdf(invoiceId: string, options?: { forceRegenerate?: boolean }): Promise<GeneratePdfResult> {
     const existingPdf = await prisma.generatedDocument.findFirst({
       where: {
         sageInvoiceId: invoiceId,
@@ -80,7 +107,7 @@ export class DocumentsService {
       orderBy: { generatedAt: "desc" }
     });
 
-    if (existingPdf) {
+    if (existingPdf && !options?.forceRegenerate) {
       await prisma.sageInvoice.update({
         where: { id: invoiceId },
         data: { pdfStatus: PdfStatus.GENERATED }
@@ -117,12 +144,19 @@ export class DocumentsService {
       };
     }
 
-    const invoice = await prisma.sageInvoice.findUnique({
-      where: { id: invoiceId },
-      include: {
-        items: { orderBy: { lineNo: "asc" } }
-      }
-    });
+    const [invoice, setting] = await Promise.all([
+      prisma.sageInvoice.findUnique({
+        where: { id: invoiceId },
+        include: {
+          items: { orderBy: { lineNo: "asc" } },
+          fiscalResult: true
+        }
+      }),
+      prisma.setting.findFirst({
+        where: { key: SETUP_KEY, isActive: true },
+        select: { value: true }
+      })
+    ]);
 
     if (!invoice) {
       throw new DocumentGenerationError("Invoice not found", 404, "INVOICE_NOT_FOUND");
@@ -134,32 +168,72 @@ export class DocumentsService {
     });
 
     try {
+      const settingsValue = this.parseSettingsValue(setting?.value ?? null);
+      const seller = settingsValue.seller ?? settingsValue.company ?? {};
+      const logoUrl = seller.logoUrl ?? seller.logoPath ?? settingsValue.company?.logoUrl ?? settingsValue.company?.logoPath ?? null;
+
+      const invoiceDate = invoice.invoiceDate;
+      const fiscalDate = invoice.fiscalResult?.receivedAt ?? null;
+      const fiscalItems = invoice.items.length;
+
       const html = buildInvoiceHtml({
         invoiceId: invoice.id,
         invoiceNumber: invoice.sageDocumentNo ?? invoice.sagePiece,
-        invoiceDate: invoice.invoiceDate.toISOString().slice(0, 10),
-        dueDate: invoice.dueDate ? invoice.dueDate.toISOString().slice(0, 10) : null,
+        invoiceReference: invoice.sagePiece,
+        invoiceDate: invoiceDate.toISOString().slice(0, 10),
+        invoiceTime: invoiceDate.toISOString().slice(11, 19),
         currencyCode: invoice.currencyCode,
-        customerName: invoice.customerName ?? "Walk-in customer",
-        customerTin: invoice.customerTin ?? "N/A",
-        companyName: Env.COMPANY_NAME,
-        companyTin: Env.COMPANY_TIN,
-        companyAddress: Env.COMPANY_ADDRESS,
-        subtotalAmount: this.toNumber(invoice.subtotalAmount),
-        discountAmount: this.toNumber(invoice.discountAmount),
-        taxAmount: this.toNumber(invoice.taxAmount),
-        totalAmount: this.toNumber(invoice.totalAmount),
-        rcptNo: "N/A",
-        verificationUrl: null,
-        qrCodeData: null,
+        customer: {
+          name: invoice.customerName ?? "Walk-in customer",
+          tin: invoice.customerTin,
+          phone: null,
+          email: null,
+          address: invoice.customerCode
+        },
+        seller: {
+          companyName: seller.name ?? Env.COMPANY_NAME,
+          tin: seller.tin ?? Env.COMPANY_TIN,
+          phone: seller.phone ?? null,
+          email: seller.email ?? null,
+          address: seller.address ?? Env.COMPANY_ADDRESS,
+          website: seller.website ?? null
+        },
+        logoUrl,
+        paymentMode: null,
+        doneBy: "System",
+        bankDetails: this.toLines(seller.bankDetails ?? settingsValue.company?.bankDetails),
+        totals: {
+          base: this.toNumber(invoice.subtotalAmount),
+          taxRate: 0,
+          vat: this.toNumber(invoice.taxAmount),
+          totalExclusive: this.toNumber(invoice.subtotalAmount),
+          totalInclusive: this.toNumber(invoice.totalAmount),
+          netAmount: this.toNumber(invoice.totalAmount)
+        },
+        fiscal: {
+          sdcId: invoice.fiscalResult?.sdcId ?? null,
+          receiptNumber: invoice.fiscalResult?.rcptNo ?? null,
+          receiptSignature: invoice.fiscalResult?.rcptSign ?? null,
+          internalData: invoice.fiscalResult?.intrlData ?? null,
+          date: fiscalDate ? fiscalDate.toISOString().slice(0, 10) : null,
+          time: fiscalDate ? fiscalDate.toISOString().slice(11, 19) : null,
+          cisDate: invoice.fiscalResult?.fiscalDay ?? null,
+          totalTax: invoice.fiscalResult?.taxAmount ? this.toNumber(invoice.fiscalResult.taxAmount) : null,
+          totalAmount: invoice.fiscalResult?.totalAmount ? this.toNumber(invoice.fiscalResult.totalAmount) : null,
+          itemsNumber: invoice.fiscalResult ? fiscalItems : null,
+          mrc: invoice.fiscalResult?.mrcNo ?? null
+        },
         items: invoice.items.map((item) => ({
           lineNo: item.lineNo,
-          itemName: item.itemName,
+          itemReference: item.itemCode ?? `ITEM-${item.lineNo}`,
+          description: item.itemName,
+          batchNumber: null,
+          expiryDate: null,
           quantity: this.toNumber(item.quantity),
           unitPrice: this.toNumber(item.unitPrice),
           taxRate: this.toNumber(item.taxRate),
           taxAmount: this.toNumber(item.taxAmount),
-          lineTotal: this.toNumber(item.lineTotal)
+          totalTaxIncl: this.toNumber(item.lineTotal)
         }))
       });
 
@@ -178,7 +252,7 @@ export class DocumentsService {
           await page.pdf({
             format: "A4",
             printBackground: true,
-            margin: { top: "12mm", right: "10mm", bottom: "12mm", left: "10mm" }
+            margin: { top: "4mm", right: "4mm", bottom: "4mm", left: "4mm" }
           })
         );
       } finally {
@@ -222,11 +296,12 @@ export class DocumentsService {
             sageInvoiceId: invoice.id,
             source: "DOCUMENT_ENGINE",
             level: "INFO",
-            message: "Invoice PDF generated",
+            message: options?.forceRegenerate ? "Invoice PDF regenerated" : "Invoice PDF generated",
             context: {
               documentId: created.id,
               storagePath: fullPath,
-              fileSizeBytes: pdfBuffer.length
+              fileSizeBytes: pdfBuffer.length,
+              forceRegenerate: Boolean(options?.forceRegenerate)
             }
           }
         });
@@ -306,5 +381,29 @@ export class DocumentsService {
 
   private toNumber(value: Prisma.Decimal | number): number {
     return typeof value === "number" ? value : value.toNumber();
+  }
+
+  private parseSettingsValue(rawValue: string | null): StoredSettingsValue {
+    if (!rawValue) {
+      return {};
+    }
+
+    try {
+      const parsed = JSON.parse(rawValue) as StoredSettingsValue;
+      return typeof parsed === "object" && parsed !== null ? parsed : {};
+    } catch {
+      return {};
+    }
+  }
+
+  private toLines(value: string | undefined): string[] {
+    if (!value) {
+      return [];
+    }
+
+    return value
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean);
   }
 }

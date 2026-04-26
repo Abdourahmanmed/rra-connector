@@ -7,7 +7,11 @@ const companySchema = z.object({
   tin: z.string().min(1).optional(),
   address: z.string().min(1).optional(),
   phone: z.string().min(1).optional(),
-  email: z.string().email().optional()
+  email: z.string().email().optional(),
+  website: z.string().url().optional(),
+  logoUrl: z.string().url().optional(),
+  logoPath: z.string().min(1).optional(),
+  bankDetails: z.string().optional()
 });
 
 const sellerSchema = z.object({
@@ -15,7 +19,11 @@ const sellerSchema = z.object({
   tin: z.string().min(1).optional(),
   address: z.string().min(1).optional(),
   phone: z.string().min(1).optional(),
-  email: z.string().email().optional()
+  email: z.string().email().optional(),
+  website: z.string().url().optional(),
+  logoUrl: z.string().url().optional(),
+  logoPath: z.string().min(1).optional(),
+  bankDetails: z.string().optional()
 });
 
 const vsdcSchema = z.object({
