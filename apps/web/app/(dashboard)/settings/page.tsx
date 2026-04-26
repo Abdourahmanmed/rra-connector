@@ -1,7 +1,7 @@
 "use client"
 
 import { zodResolver } from "@hookform/resolvers/zod"
-import { useEffect, useState } from "react"
+import { useEffect, useState, type ChangeEvent } from "react"
 import { useForm } from "react-hook-form"
 import { toast } from "sonner"
 import { z } from "zod"
@@ -16,6 +16,7 @@ import { Separator } from "@/components/ui/separator"
 import { useAuth } from "@/hooks/use-auth"
 import { withAuthHeader } from "@/lib/auth"
 import { apiClient } from "@/lib/api/client"
+import { getApiBaseUrl } from "@/lib/api/url"
 import { mapVsdcPayload, setupDefaultValues, setupSchema, type ApiResult } from "@/lib/setup"
 
 const settingsSchema = setupSchema
@@ -27,6 +28,8 @@ const settingsSchema = setupSchema
   })
 
 type SettingsFormValues = z.infer<typeof settingsSchema>
+
+const API_BASE_URL = getApiBaseUrl()
 
 type SettingsResponse = {
   success: boolean
@@ -82,6 +85,9 @@ export default function SettingsPage() {
   const [hasStoredVsdcSecret, setHasStoredVsdcSecret] = useState(false)
   const [sqlResult, setSqlResult] = useState<{ state: "idle" | "success" | "error"; message?: string; details?: string }>({ state: "idle" })
   const [vsdcResult, setVsdcResult] = useState<{ state: "idle" | "success" | "error"; message?: string; details?: string }>({ state: "idle" })
+  const [logoFile, setLogoFile] = useState<File | null>(null)
+  const [logoPreviewUrl, setLogoPreviewUrl] = useState<string | null>(null)
+  const [currentLogoUrl, setCurrentLogoUrl] = useState<string | null>(null)
 
   const form = useForm<SettingsFormValues>({
     resolver: zodResolver(settingsSchema),
@@ -119,6 +125,9 @@ export default function SettingsPage() {
         const current = response.data.data
         setHasStoredSqlPassword(current.sql.hasPassword)
         setHasStoredVsdcSecret(current.vsdc.hasClientSecret)
+
+        const savedLogo = current.seller.logoUrl ?? current.company.logoUrl ?? null
+        setCurrentLogoUrl(savedLogo ? (savedLogo.startsWith("http") ? savedLogo : `${API_BASE_URL}${savedLogo}`) : null)
 
         form.reset({
           sql: {
@@ -243,6 +252,37 @@ export default function SettingsPage() {
     }
   }
 
+  const handleLogoChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null
+    setLogoFile(file)
+    setLogoPreviewUrl(file ? URL.createObjectURL(file) : null)
+  }
+
+  const uploadLogo = async (activeToken: string): Promise<{ logoUrl: string; logoPath: string } | null> => {
+    if (!logoFile) {
+      return null
+    }
+
+    const formData = new FormData()
+    formData.append("logo", logoFile)
+
+    const response = await fetch(`${API_BASE_URL}/api/settings/logo`, {
+      method: "POST",
+      headers: withAuthHeader(activeToken),
+      body: formData,
+    })
+
+    const body = (await response.json().catch(() => null)) as
+      | { success: boolean; data?: { logoUrl: string; logoPath: string }; error?: string }
+      | null
+
+    if (!response.ok || !body?.success || !body.data) {
+      throw new Error(body?.error ?? "Failed to upload logo")
+    }
+
+    return body.data
+  }
+
   const submitSettings = async (values: SettingsFormValues) => {
     if (!token) {
       toast.error("Authentication token is missing")
@@ -252,9 +292,9 @@ export default function SettingsPage() {
     setIsSaving(true)
 
     try {
-      await apiClient.patch(
-        "/api/settings",
-        {
+      const uploadedLogo = await uploadLogo(token)
+
+      const payload = {
           company: {
             name: values.company.companyName,
             tin: values.vsdc.tin,
@@ -293,13 +333,24 @@ export default function SettingsPage() {
             authType: values.sql.authType,
             ...(values.sql.password ? { password: values.sql.password } : {}),
           },
-        },
-        {
-          headers: withAuthHeader(token),
         }
-      )
+
+      if (uploadedLogo) {
+        payload.company.logoUrl = uploadedLogo.logoUrl
+        payload.company.logoPath = uploadedLogo.logoPath
+        payload.seller.logoUrl = uploadedLogo.logoUrl
+        payload.seller.logoPath = uploadedLogo.logoPath
+      }
+
+      await apiClient.patch("/api/settings", payload, {
+        headers: withAuthHeader(token),
+      })
 
       toast.success("Settings saved successfully")
+      if (uploadedLogo) {
+        setCurrentLogoUrl(`${API_BASE_URL}${uploadedLogo.logoUrl}`)
+        setLogoFile(null)
+      }
       setHasStoredSqlPassword(true)
       setHasStoredVsdcSecret(true)
       form.setValue("sql.password", "")
@@ -383,20 +434,21 @@ export default function SettingsPage() {
                         <FormMessage />
                       </FormItem>
                     )} />
-                    <FormField control={form.control} name="company.logoUrl" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Invoice Logo URL</FormLabel>
-                        <FormControl><Input placeholder="https://cdn.company.com/logo.png" {...field} /></FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                    <FormField control={form.control} name="company.logoPath" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Invoice Logo Path</FormLabel>
-                        <FormControl><Input placeholder="/uploads/invoice-logo.png" {...field} /></FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
+                    <FormItem>
+                      <FormLabel>Invoice Logo</FormLabel>
+                      <FormControl><Input type="file" accept=".png,.jpg,.jpeg,.webp,.svg,image/*" onChange={handleLogoChange} /></FormControl>
+                      <p className="text-xs text-muted-foreground">PNG, JPG, WEBP, or safe SVG. Max size 2MB.</p>
+                    </FormItem>
+                    <div className="space-y-2">
+                      <FormLabel>Current Logo</FormLabel>
+                      {logoPreviewUrl ? (
+                        <img src={logoPreviewUrl} alt="Logo preview" className="h-20 w-20 rounded border object-contain p-1" />
+                      ) : currentLogoUrl ? (
+                        <img src={currentLogoUrl} alt="Current logo" className="h-20 w-20 rounded border object-contain p-1" />
+                      ) : (
+                        <p className="text-xs text-muted-foreground">No logo uploaded.</p>
+                      )}
+                    </div>
                     <FormField control={form.control} name="company.bankDetails" render={({ field }) => (
                       <FormItem className="md:col-span-2">
                         <FormLabel>Bank details (one per line)</FormLabel>

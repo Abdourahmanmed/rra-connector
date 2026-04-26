@@ -1,3 +1,4 @@
+import type { ChangeEvent } from "react"
 import type { UseFormReturn } from "react-hook-form"
 
 import {
@@ -12,9 +13,11 @@ import type { SetupFormValues } from "@/lib/setup"
 
 type CompanyInfoStepProps = {
   form: UseFormReturn<SetupFormValues>
+  logoPreviewUrl?: string | null
+  onLogoChange: (event: ChangeEvent<HTMLInputElement>) => void
 }
 
-export function CompanyInfoStep({ form }: CompanyInfoStepProps) {
+export function CompanyInfoStep({ form, logoPreviewUrl, onLogoChange }: CompanyInfoStepProps) {
   return (
     <div className="space-y-4">
       <div className="grid gap-4 md:grid-cols-2">
@@ -117,33 +120,13 @@ export function CompanyInfoStep({ form }: CompanyInfoStepProps) {
           )}
         />
 
-        <FormField
-          control={form.control}
-          name="company.logoUrl"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Invoice Logo URL</FormLabel>
-              <FormControl>
-                <Input placeholder="https://cdn.example.com/logo.png" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="company.logoPath"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Invoice Logo Path (optional)</FormLabel>
-              <FormControl>
-                <Input placeholder="/uploads/invoice-logo.png" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <FormItem>
+          <FormLabel>Invoice Logo</FormLabel>
+          <FormControl>
+            <Input type="file" accept=".png,.jpg,.jpeg,.webp,.svg,image/*" onChange={onLogoChange} />
+          </FormControl>
+          {logoPreviewUrl ? <img src={logoPreviewUrl} alt="Logo preview" className="mt-2 h-20 w-20 rounded border object-contain p-1" /> : null}
+        </FormItem>
 
         <FormField
           control={form.control}

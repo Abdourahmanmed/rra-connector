@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { access, constants as fsConstants, mkdir, writeFile } from "node:fs/promises";
+import { access, constants as fsConstants, mkdir, readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { DocumentType, GenerationStatus, InvoiceImportStatus, PdfStatus, type Prisma } from "@prisma/client";
 import { Env } from "../../config/env";
@@ -154,7 +154,7 @@ export class DocumentsService {
       }),
       prisma.setting.findFirst({
         where: { key: SETUP_KEY, isActive: true },
-        select: { value: true }
+        select: { value: true, companyLogoPath: true, companyLogoUrl: true }
       })
     ]);
 
@@ -170,7 +170,10 @@ export class DocumentsService {
     try {
       const settingsValue = this.parseSettingsValue(setting?.value ?? null);
       const seller = settingsValue.seller ?? settingsValue.company ?? {};
-      const logoUrl = seller.logoUrl ?? seller.logoPath ?? settingsValue.company?.logoUrl ?? settingsValue.company?.logoPath ?? null;
+      const logoUrl = await this.resolveLogoSource(
+        seller.logoPath ?? settingsValue.company?.logoPath ?? setting?.companyLogoPath ?? null,
+        seller.logoUrl ?? settingsValue.company?.logoUrl ?? setting?.companyLogoUrl ?? null
+      );
 
       const invoiceDate = invoice.invoiceDate;
       const fiscalDate = invoice.fiscalResult?.receivedAt ?? null;
@@ -383,6 +386,32 @@ export class DocumentsService {
     return typeof value === "number" ? value : value.toNumber();
   }
 
+
+  private async resolveLogoSource(logoPath: string | null, logoUrl: string | null): Promise<string | null> {
+    if (logoPath) {
+      try {
+        const content = await readFile(logoPath);
+        const lowerPath = logoPath.toLowerCase();
+        const mimeType = lowerPath.endsWith(".png")
+          ? "image/png"
+          : lowerPath.endsWith(".jpg") || lowerPath.endsWith(".jpeg")
+            ? "image/jpeg"
+            : lowerPath.endsWith(".webp")
+              ? "image/webp"
+              : lowerPath.endsWith(".svg")
+                ? "image/svg+xml"
+                : null;
+
+        if (mimeType) {
+          return `data:${mimeType};base64,${content.toString("base64")}`;
+        }
+      } catch {
+        // Ignore read error and fallback to URL value below.
+      }
+    }
+
+    return logoUrl;
+  }
   private parseSettingsValue(rawValue: string | null): StoredSettingsValue {
     if (!rawValue) {
       return {};

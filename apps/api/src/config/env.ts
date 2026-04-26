@@ -20,6 +20,8 @@ const envSchema = z.object({
     .min(32, "AUTH_JWT_SECRET must be at least 32 characters"),
   AUTH_JWT_EXPIRES_IN: z.string().default("8h"),
   DOCUMENTS_STORAGE_PATH: z.string().default(resolve(process.cwd(), "storage/documents")),
+  LOGOS_STORAGE_PATH: z.string().default(resolve(__dirname, "../../storage/logos")),
+  MAX_LOGO_FILE_SIZE_BYTES: z.coerce.number().int().positive().default(2 * 1024 * 1024),
   COMPANY_NAME: z.string().default("RRA Connector Ltd"),
   COMPANY_TIN: z.string().default("N/A"),
   COMPANY_ADDRESS: z.string().default("Kigali, Rwanda"),

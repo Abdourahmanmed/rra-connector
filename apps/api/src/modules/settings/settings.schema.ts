@@ -9,7 +9,7 @@ const companySchema = z.object({
   phone: z.string().min(1).optional(),
   email: z.string().email().optional(),
   website: z.string().url().optional(),
-  logoUrl: z.string().url().optional(),
+  logoUrl: z.string().min(1).optional(),
   logoPath: z.string().min(1).optional(),
   bankDetails: z.string().optional()
 });
@@ -21,7 +21,7 @@ const sellerSchema = z.object({
   phone: z.string().min(1).optional(),
   email: z.string().email().optional(),
   website: z.string().url().optional(),
-  logoUrl: z.string().url().optional(),
+  logoUrl: z.string().min(1).optional(),
   logoPath: z.string().min(1).optional(),
   bankDetails: z.string().optional()
 });

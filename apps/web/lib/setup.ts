@@ -23,7 +23,7 @@ export const setupSchema = z.object({
     sellerPhone: z.string().min(1, "Seller phone is required"),
     sellerEmail: z.string().email("Provide a valid seller email"),
     publicBaseUrl: z.string().url("Provide a valid public URL"),
-    logoUrl: z.string().url("Provide a valid logo URL").optional().or(z.literal("")),
+    logoUrl: z.string().optional(),
     logoPath: z.string().optional(),
     bankDetails: z.string().optional(),
     website: z.string().url("Provide a valid website URL").optional().or(z.literal("")),
