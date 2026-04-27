@@ -39,6 +39,8 @@ type StoredSettingsValue = {
     website?: string;
     logoUrl?: string;
     logoPath?: string;
+    secondaryLogoUrl?: string;
+    secondaryLogoPath?: string;
     bankDetails?: string;
   };
   seller?: {
@@ -50,6 +52,8 @@ type StoredSettingsValue = {
     website?: string;
     logoUrl?: string;
     logoPath?: string;
+    secondaryLogoUrl?: string;
+    secondaryLogoPath?: string;
     bankDetails?: string;
   };
 };
@@ -174,6 +178,10 @@ export class DocumentsService {
         seller.logoPath ?? settingsValue.company?.logoPath ?? setting?.companyLogoPath ?? null,
         seller.logoUrl ?? settingsValue.company?.logoUrl ?? setting?.companyLogoUrl ?? null
       );
+      const secondaryLogoUrl = await this.resolveLogoSource(
+        seller.secondaryLogoPath ?? settingsValue.company?.secondaryLogoPath ?? null,
+        seller.secondaryLogoUrl ?? settingsValue.company?.secondaryLogoUrl ?? null
+      );
 
       const invoiceDate = invoice.invoiceDate;
       const fiscalDate = invoice.fiscalResult?.receivedAt ?? null;
@@ -202,6 +210,7 @@ export class DocumentsService {
           website: seller.website ?? null
         },
         logoUrl,
+        secondaryLogoUrl,
         paymentMode: null,
         doneBy: "System",
         bankDetails: this.toLines(seller.bankDetails ?? settingsValue.company?.bankDetails),
