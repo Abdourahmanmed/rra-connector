@@ -190,30 +190,31 @@ export class DocumentsService {
       const html = buildInvoiceHtml({
         invoiceId: invoice.id,
         invoiceNumber: invoice.sageDocumentNo ?? invoice.sagePiece,
-        invoiceReference: invoice.sagePiece,
+        invoiceReference: invoice.invoiceReference ?? invoice.customerReference ?? invoice.sagePiece,
         invoiceDate: invoiceDate.toISOString().slice(0, 10),
-        invoiceTime: invoiceDate.toISOString().slice(11, 19),
+        invoiceTime: invoice.invoiceTime ?? invoiceDate.toISOString().slice(11, 19),
         currencyCode: invoice.currencyCode,
         customer: {
           name: invoice.customerName ?? "Walk-in customer",
           tin: invoice.customerTin,
-          phone: null,
-          email: null,
-          address: invoice.customerCode
+          phone: invoice.customerPhone,
+          email: invoice.customerEmail,
+          address: invoice.customerAddress ?? invoice.customerCode
         },
         seller: {
-          companyName: seller.name ?? Env.COMPANY_NAME,
-          tin: seller.tin ?? Env.COMPANY_TIN,
-          phone: seller.phone ?? null,
-          email: seller.email ?? null,
-          address: seller.address ?? Env.COMPANY_ADDRESS,
-          website: seller.website ?? null
+          companyName: invoice.sellerName ?? seller.name ?? Env.COMPANY_NAME,
+          tin: invoice.sellerTin ?? seller.tin ?? Env.COMPANY_TIN,
+          phone: invoice.sellerPhone ?? seller.phone ?? null,
+          email: invoice.sellerEmail ?? seller.email ?? null,
+          address: invoice.sellerAddress ?? seller.address ?? Env.COMPANY_ADDRESS,
+          website: invoice.sellerWebsite ?? seller.website ?? null
         },
         logoUrl,
         secondaryLogoUrl,
-        paymentMode: null,
-        doneBy: "System",
-        bankDetails: this.toLines(seller.bankDetails ?? settingsValue.company?.bankDetails),
+        paymentMode: invoice.paymentMode,
+        paymentAmount: invoice.paymentAmount !== null ? this.toNumber(invoice.paymentAmount) : null,
+        doneBy: invoice.doneBy,
+        bankDetails: this.toLines(invoice.bankDetails ?? seller.bankDetails ?? settingsValue.company?.bankDetails),
         totals: {
           base: this.toNumber(invoice.subtotalAmount),
           taxRate: 0,

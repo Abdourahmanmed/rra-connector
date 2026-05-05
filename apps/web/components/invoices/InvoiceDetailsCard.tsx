@@ -10,6 +10,11 @@ type InvoiceDetails = {
   customerCode: string | null
   customerName: string | null
   customerTin: string | null
+  customerPhone: string | null
+  customerEmail: string | null
+  customerAddress: string | null
+  paymentMode: string | null
+  doneBy: string | null
   invoiceDate: string
   dueDate: string | null
   currencyCode: string
@@ -72,6 +77,26 @@ export function InvoiceDetailsCard({ invoice }: InvoiceDetailsCardProps) {
           <div>
             <p className="text-xs text-muted-foreground">Customer TIN</p>
             <p className="font-medium">{invoice.customerTin ?? "-"}</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Customer phone</p>
+            <p className="font-medium">{invoice.customerPhone ?? "-"}</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Customer email</p>
+            <p className="font-medium">{invoice.customerEmail ?? "-"}</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Customer address</p>
+            <p className="font-medium">{invoice.customerAddress ?? "-"}</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Payment mode</p>
+            <p className="font-medium">{invoice.paymentMode ?? "-"}</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Done by</p>
+            <p className="font-medium">{invoice.doneBy ?? "-"}</p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Currency</p>

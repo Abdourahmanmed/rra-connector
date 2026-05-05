@@ -23,6 +23,11 @@ type InvoiceDetail = {
   customerCode: string | null
   customerName: string | null
   customerTin: string | null
+  customerPhone: string | null
+  customerEmail: string | null
+  customerAddress: string | null
+  paymentMode: string | null
+  doneBy: string | null
   invoiceDate: string
   dueDate: string | null
   currencyCode: string
@@ -44,6 +49,8 @@ type InvoiceDetail = {
     lineNo: number
     itemCode: string | null
     itemName: string
+    batchNumber: string | null
+    expiryDate: string | null
     quantity: number
     unitPrice: number
     discountAmount: number

@@ -160,6 +160,23 @@ model SageInvoice {
   customerCode      String?
   customerName      String?
   customerTin       String?
+  customerReference String?
+  customerPhone     String?
+  customerEmail     String?
+  customerAddress   String?
+  sellerName        String?
+  sellerTin         String?
+  sellerPhone       String?
+  sellerEmail       String?
+  sellerAddress     String?
+  sellerWebsite     String?
+  paymentMode       String?
+  paymentAmount     Decimal?            @db.Decimal(18, 2)
+  doneBy            String?
+  invoiceTime       String?
+  invoiceReference  String?
+  sageStatus        String?
+  bankDetails       String?
   currencyCode      String              @default("RWF")
   exchangeRate      Decimal             @db.Decimal(18, 6)
 
@@ -203,12 +220,17 @@ model SageInvoiceItem {
   sageInvoiceId     String
   lineNo            Int
   itemCode          String?
+  sourceLineReference String?
   itemName          String
   quantity          Decimal     @db.Decimal(18, 3)
   unitPrice         Decimal     @db.Decimal(18, 2)
   discountAmount    Decimal     @default(0) @db.Decimal(18, 2)
   taxRate           Decimal     @default(0) @db.Decimal(5, 2)
   taxAmount         Decimal     @default(0) @db.Decimal(18, 2)
+  taxIncludedTotal  Decimal?    @db.Decimal(18, 2)
+  taxLabel          String?
+  batchNumber       String?
+  expiryDate        DateTime?
   lineTotal         Decimal     @db.Decimal(18, 2)
   unitOfMeasure     String?
   createdAt         DateTime    @default(now())
