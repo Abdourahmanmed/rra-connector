@@ -61,6 +61,10 @@ export type InvoiceDetailItem = {
   discountAmount: number;
   taxRate: number;
   taxAmount: number;
+  taxIncludedTotal: number | null;
+  taxLabel: string | null;
+  batchNumber: string | null;
+  expiryDate: string | null;
   lineTotal: number;
   unitOfMeasure: string | null;
 };
@@ -105,6 +109,24 @@ export type InvoiceDetailResponse = {
   customerCode: string | null;
   customerName: string | null;
   customerTin: string | null;
+
+  customerReference: string | null;
+  customerPhone: string | null;
+  customerEmail: string | null;
+  customerAddress: string | null;
+  sellerName: string | null;
+  sellerTin: string | null;
+  sellerPhone: string | null;
+  sellerEmail: string | null;
+  sellerAddress: string | null;
+  sellerWebsite: string | null;
+  paymentMode: string | null;
+  paymentAmount: number | null;
+  doneBy: string | null;
+  invoiceTime: string | null;
+  invoiceReference: string | null;
+  sageStatus: string | null;
+  bankDetails: string | null;
   invoiceDate: string;
   dueDate: string | null;
   currencyCode: string;

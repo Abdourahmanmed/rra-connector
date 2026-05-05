@@ -11,9 +11,10 @@ export class SageService {
   async testRead(): Promise<TestReadResult> {
     const headers = await sqlServerService.runQuery<SageHeaderRow>(
       `
-      SELECT TOP (${TEST_READ_LIMIT}) *
-      FROM F_DOCENTETE
-      WHERE DO_Type = @docType
+      SELECT TOP (${TEST_READ_LIMIT}) h.*, c.CT_Num, c.CT_Intitule, c.CT_Identifiant, c.CT_Telephone, c.CT_EMail, c.CT_Adresse
+      FROM F_DOCENTETE h
+      LEFT JOIN F_COMPTET c ON c.CT_Num = h.DO_Tiers
+      WHERE h.DO_Type = @docType
       ORDER BY DO_Date DESC, DO_Piece DESC
       `,
       { docType: SALES_DOC_TYPE }
@@ -44,11 +45,12 @@ export class SageService {
 
     const headers = await sqlServerService.runQuery<SageHeaderRow>(
       `
-      SELECT *
-      FROM F_DOCENTETE
-      WHERE DO_Type = @docType
-        AND (@checkpoint IS NULL OR DO_Date >= @checkpoint)
-      ORDER BY DO_Date ASC, DO_Piece ASC
+      SELECT h.*, c.CT_Num, c.CT_Intitule, c.CT_Identifiant, c.CT_Telephone, c.CT_EMail, c.CT_Adresse
+      FROM F_DOCENTETE h
+      LEFT JOIN F_COMPTET c ON c.CT_Num = h.DO_Tiers
+      WHERE h.DO_Type = @docType
+        AND (@checkpoint IS NULL OR h.DO_Date >= @checkpoint)
+      ORDER BY h.DO_Date ASC, h.DO_Piece ASC
       `,
       {
         docType: SALES_DOC_TYPE,
@@ -71,11 +73,12 @@ export class SageService {
 
       const lines = await sqlServerService.runQuery<SageLineRow>(
         `
-        SELECT *
-        FROM F_DOCLIGNE
-        WHERE DO_Type = @docType
-          AND DO_Piece = @piece
-        ORDER BY DL_Ligne ASC
+        SELECT l.*, a.AR_Ref, a.AR_Design
+        FROM F_DOCLIGNE l
+        LEFT JOIN F_ARTICLE a ON a.AR_Ref = l.AR_Ref
+        WHERE l.DO_Type = @docType
+          AND l.DO_Piece = @piece
+        ORDER BY l.DL_Ligne ASC
         `,
         {
           docType: SALES_DOC_TYPE,

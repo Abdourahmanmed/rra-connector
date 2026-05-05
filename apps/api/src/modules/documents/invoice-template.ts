@@ -50,6 +50,7 @@ type InvoiceTemplateData = {
   logoUrl: string | null;
   secondaryLogoUrl: string | null;
   paymentMode: string | null;
+  paymentAmount: number | null;
   doneBy: string | null;
   bankDetails: string[];
   totals: {
@@ -240,7 +241,7 @@ export function buildInvoiceHtml(data: InvoiceTemplateData): string {
         <div class="meta-row">
           <p class="label">Payment mode :</p>
           <p class="meta-value">${safe(data.paymentMode)}</p>
-          <p class="meta-value">${formatMoney(data.totals.netAmount, data.currencyCode)}</p>
+          <p class="meta-value">${formatMoney(data.paymentAmount ?? data.totals.netAmount, data.currencyCode)}</p>
         </div>
       </div>
       <div>
@@ -287,7 +288,7 @@ export function buildInvoiceHtml(data: InvoiceTemplateData): string {
       <p>${formatMoney(data.totals.vat, data.currencyCode)}</p>
       <p>${formatMoney(data.totals.totalExclusive, data.currencyCode)}</p>
       <p>${formatMoney(data.totals.totalInclusive, data.currencyCode)}</p>
-      <p>${formatMoney(data.totals.netAmount, data.currencyCode)}</p>
+      <p>${formatMoney(data.paymentAmount ?? data.totals.netAmount, data.currencyCode)}</p>
     </div>
 
     <div class="bottom-wrap">

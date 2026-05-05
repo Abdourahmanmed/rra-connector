@@ -7,6 +7,8 @@ type InvoiceItem = {
   lineNo: number
   itemCode: string | null
   itemName: string
+  batchNumber: string | null
+  expiryDate: string | null
   quantity: number
   unitPrice: number
   discountAmount: number
@@ -37,7 +39,7 @@ export function InvoiceItemsTable({ items, currencyCode }: InvoiceItemsTableProp
                 <TableHead>Line</TableHead>
                 <TableHead>Item</TableHead>
                 <TableHead>Code</TableHead>
-                <TableHead className="text-right">Qty</TableHead>
+                <TableHead>Batch</TableHead><TableHead>Expiry</TableHead><TableHead className="text-right">Qty</TableHead>
                 <TableHead className="text-right">UoM</TableHead>
                 <TableHead className="text-right">Unit Price</TableHead>
                 <TableHead className="text-right">Discount</TableHead>
@@ -53,6 +55,8 @@ export function InvoiceItemsTable({ items, currencyCode }: InvoiceItemsTableProp
                     <TableCell>{item.lineNo}</TableCell>
                     <TableCell className="font-medium">{item.itemName}</TableCell>
                     <TableCell>{item.itemCode ?? "-"}</TableCell>
+                    <TableCell>{item.batchNumber ?? "-"}</TableCell>
+                    <TableCell>{item.expiryDate ? new Date(item.expiryDate).toLocaleDateString() : "-"}</TableCell>
                     <TableCell className="text-right">{item.quantity}</TableCell>
                     <TableCell className="text-right">{item.unitOfMeasure ?? "-"}</TableCell>
                     <TableCell className="text-right">{currency.format(item.unitPrice)}</TableCell>
@@ -64,7 +68,7 @@ export function InvoiceItemsTable({ items, currencyCode }: InvoiceItemsTableProp
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={10} className="py-6 text-center text-muted-foreground">
+                  <TableCell colSpan={12} className="py-6 text-center text-muted-foreground">
                     No items found.
                   </TableCell>
                 </TableRow>
